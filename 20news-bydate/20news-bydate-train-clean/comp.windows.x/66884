@@ -1,0 +1,5 @@
+I've been trying to figure a way to programmatically iconize
+an application running under a Motif window manager. I have tried
+several approaches includeing sending events to the application's
+border window, but to no avail? Anyone done this before?
+Thanks,

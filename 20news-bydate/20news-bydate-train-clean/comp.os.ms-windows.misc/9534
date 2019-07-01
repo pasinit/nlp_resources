@@ -1,0 +1,19 @@
+Distribution: world
+NNTP-Posting-Host: unixg.ubc.ca
+Our student association runs a small Novell network which has a subnetwork
+of Windows for Workgroups and Microsoft Mail. The Director of Finance, en
+electrical engineering student, would like to gateway this system, either
+via SLIP or not, into the University's network and thus the Internet, at
+the very least to exchange e-mail, but possibly also to do ftp's etc. For
+now, this would be done via a 9600 bps modem.
+He would like to set it up so that it would periodically call in to check
+mail, but would otherwise connect whenever needed.
+What is the best way to do this? Gatewaying software is available, but
+what works best?
+Please reply to me:
+or the D of F :
+with a cc: to the other. I don't read all of these groups regularly, so mail
+is best. If this is a common question, please pot me to a FAQ or ftp site.
+:=:=> Derek K. Miller
+Researcher, Alma Mater Society
+University of British Columbia, Canada

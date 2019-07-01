@@ -1,0 +1,8 @@
+Distribution: usa
+Reply-To:
+NNTP-Posting-Host: medusa.jpl.nasa.gov
+Has anyone written or seen a C library or C++ class for fixed-point math,
+or good articles about same?
+I pretty much know how to do this, but I have a few other wheels to invent
+at the moment.
+Thanks!

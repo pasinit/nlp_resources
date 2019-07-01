@@ -1,0 +1,12 @@
+NNTP-Posting-Host: ivem.ucsd.edu
+Keywords: point, polygon
+In article <> (Simon Crowe) writes:
+I am looking for an algorithm to determine if a given point is bound by a
+polygon. Does anyone have any such code or a reference to book containing
+information on the subject ?
+See the article "An Efficient Ray-Polygon Intersection," p. 390 in
+Graphics Gems (ISBN 0-12-286165-5). The second step, intersecting the
+polygon, does what you want. There is sample code in the book.
+spl
+--
+Steve Lamont, SciViGuy -- (619) 534-7968 --

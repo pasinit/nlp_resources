@@ -1,0 +1,17 @@
+Organization: Grebyn Timesharing, Inc.
+In article <> (ghhwang) writes:
+Dear friend,
+The RISC means "reduced instruction set computer". The RISC usually has
+small instruction set so as to reduce the circuit complex and can increase
+the clock rate to have a high performance. You can read some books about
+computer architecture for more information about RISC.
+RISC used to mean "Reduced Instruction Set Computer", true. They
+still use the same acronym, but only to be familiar. What RISC really
+means is a recently-designed CPU. :-)
+In general, most RISC CPUs are like this:
+A large number (32 or more) of general-purpose registers
+A fixed instruction size, usually 32 bits
+An instruction may make only one memory reference
+Memory references must be aligned
+There are delayed branches (branch after the next instruction) or
+a target prediction bit (probably will/won't branch)

@@ -1,0 +1,10 @@
+NNTP-Posting-Host: carina.unm.edu
+It seems like XTranslateCoord. doesn't work the way I expecting it. Right
+after performs a XMoveWindow, I want to know the absolute window position
+with respect to the root window. To get this info. I do a XTranslateCoordinates
+but the abs_x, and abs_y aren't right? Does anybody know of a way to find
+out this information?
+Thanks, please e-mail to if it's possible
+--
+_---_ Steve
+/ o o \ ,

@@ -1,0 +1,8 @@
+Distribution: world
+NNTP-Posting-Host: narya.gsfc.nasa.gov
+Originator:
+Anyone know how an application can retrieve the name of the font from
+an application given an XFontStruct *?
+Would XGetFontProperty work if I passed XA_FONT_NAME?
+anyone know details of this? Thanks in advance.
+Brian

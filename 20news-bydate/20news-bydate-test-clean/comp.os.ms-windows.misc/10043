@@ -1,0 +1,13 @@
+I>From: (Costas Malamas)
+Subject: Re: Windows zip/unzip
+Date: 28 Apr 93 22:31:55 GMT
+In article <1rl9b6$> (Russ Sharp) writes:
+>We are using pkzip V2.04 and I am interested to hear from
+>people who have used one of the many Windows programs that
+>call these.
+>Is there a full windows version that does not call the DOS
+>PKZIP/PKUNZIP commands?
+>--
+>Russ Sharp ph (052)27 1141 fax (052)27 2015 \ /
+There is WunArchive, the replacement of WunZip. It only extracts, but it
+ssupports pkzip 2.04. It does NOT require pkz/unzip in order to work, and

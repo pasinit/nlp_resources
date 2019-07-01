@@ -1,0 +1,15 @@
+NNTP-Posting-Host: eden.cs.berkeley.edu
+In-reply-to: 's message of Tue, 6 Apr 1993 11:41:36 GMT
+In article <> (Roderick Campbell) writes:
+=>There is a free unix, linux, that has cc, ~c++, fortran ( f2c ),
+=>Xwindows and many other features besides, with a large number of utilities
+=>that can be optionally added. And there is also a free 386BSD I believe.
+=>Both these unix's are quite robust. You can check out comp.os.linux
+i dunno about linux, but for 386bsd, don't forget networking
+(well tested, at that), NFS, a fast, incredibly stable filesystem,
+and the list goes on. 8-)
+for us 386bsd folk, look in comp.os.386bsd.*.
+chris
+moderator of comp.os.386bsd.announce, anti-politician, and sometime evangelist
+--
+Chris G. Demetriou

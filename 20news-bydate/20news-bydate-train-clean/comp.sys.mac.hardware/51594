@@ -1,0 +1,11 @@
+In <1qknuq$> (James Wang) writes:
+addressing modes. commands that do fills should be slightly faster
+since the new instructions fetch 2 bytes at a time versus one.
+Even the 68000 can fetch two bytes at a time.
+The new instruction in the 68040 is MOVE16 which fetches 16 bytes
+at a time instead of 4 which the 68030 has; that means 4 24bit
+pixels instead of one.
+Cheers,
+/ h+
+--
+-- Jon W{tte, , Mac Hacker Deluxe --

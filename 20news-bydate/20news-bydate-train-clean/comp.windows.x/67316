@@ -1,0 +1,9 @@
+Distribution: world
+Reply-To:
+NNTP-Posting-Host: irzr17.inf.tu-dresden.de
+Yet again,
+the escape sequences you are speaking about here are non standard and
+dangerous. In fact, an ANSI compliant sequence parser HANGS on them.
+Why are there such strange ESC sequences instead of compatible DSC ?
+--
++-o-+--------------------------------------------------------------+-o-+

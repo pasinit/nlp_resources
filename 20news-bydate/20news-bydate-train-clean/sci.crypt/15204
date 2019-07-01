@@ -1,0 +1,9 @@
+Distribution: world
+NNTP-Posting-Host: jfenton.kaleida.com
+X-UserAgent: Nuntius v1.1.1d12
+X-XXMessage-ID: <>
+X-XXDate: Fri, 16 Apr 93 14:12:23 GMT
+How can the government tell which encryption method one is using without
+being able to decode the traffic? i.e., In order to accuse me of using an
+unauthorized strong encryption technique they would have to take both
+keys out of escrow, run them against my ciphertext and "draw a blank".
