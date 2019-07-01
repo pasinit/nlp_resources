@@ -2,9 +2,90 @@ import os
 import re
 from spacy.tokenizer import Tokenizer
 from spacy.lang.en import English
+import numpy as np
 
 
 class TwentyNewsgroup:
+
+    def __init__(self, train_path, test_path):
+        self.train_id2text, self.train_id2label, self.word2id, self.id2word, self.labels = self.load_data(train_path,
+                                                                                                          train=True)
+        self.test_id2text, self.test_id2label, _, _, _ = self.load_data(test_path, train=False)
+
+        self.train_id2encoded_text = TwentyNewsgroup.encode_documents(self.train_id2text, self.word2id)
+        self.train_id2encoded_label = TwentyNewsgroup.encode_labels(self.train_id2label, self.labels)
+
+        self.test_id2encoded_text = TwentyNewsgroup.encode_documents(self.test_id2text, self.word2id)
+        self.test_id2encoded_label = TwentyNewsgroup.encode_labels(self.test_id2label, self.labels)
+
+    def get_training_data(self):
+        X = list(); Y = list()
+        for id in self.train_id2encoded_text.keys():
+            text = self.train_id2encoded_text[id]
+            label = self.train_id2encoded_label[id]
+            X.append(text)
+            Y.append(label)
+        return X, Y
+
+    def get_test_data(self):
+        X = list(); Y = list()
+        for id in self.test_id2encoded_text.keys():
+            text = self.test_id2encoded_text[id]
+            label = self.test_id2encoded_label[id]
+            X.append(text)
+            Y.append(label)
+        return X, Y
+
+    def get_vocab(self):
+        return self.word2id, self.id2word
+
+    def arrange_embedding_matrix(self, matrix, emb_word2id, unk_id, pad_id):
+        new_matrix = np.zeros([len(self.word2id), len(matrix[0])])
+        for word, wid in self.word2id.items():
+            new_word_id = emb_word2id.get(word, emb_word2id.get(unk_id))
+            new_matrix[wid] = matrix[new_word_id]
+        return new_matrix
+
+    @classmethod
+    def encode_documents(cls, id2text, word2id):
+        id2encode = dict()
+        for id, text in id2text.items():
+            id2encode[id] = [word2id.get(token, word2id.get("<UNK>", None)) for token in text]
+        return id2encode
+
+    @classmethod
+    def encode_labels(cls, id2label, labels):
+        id2encode = dict()
+        for id, label in id2label.items():
+            id2encode[id] = labels[label]
+        return id2encode
+
+    def get_tokens(self, path):
+        with open(path) as lines:
+            all_tokens = [token for line in lines for token in line.split(" ")]
+        return all_tokens
+
+    def load_data(self, path, train=False):
+        word2id = {"<PAD>": 0, "<UNK>": 1}
+        id2text = dict()
+        id2label = dict()
+        labels = set()
+        wid = 2
+        for d, dirs, files in os.walk(path):
+            for f in files:
+                label = d.split("/")[-1]
+                labels.add(label)
+                tokens = self.get_tokens(os.path.join(d, f))
+                for t in tokens:
+                    if not t in word2id:
+                        word2id[t] = wid
+                        wid += 1
+                id2text[int(f)] = tokens
+                id2label[int(f)] = label
+        labels = {idx: l for idx, l in enumerate(sorted(list(labels)))}
+        id2word = {id: word for word, id in word2id.items()}
+        return id2text, id2label, word2id, id2word, labels
+
     @classmethod
     def clean_valid_lines(cls, valid_lines, tokeniser):
         email_regex = r"([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)"
