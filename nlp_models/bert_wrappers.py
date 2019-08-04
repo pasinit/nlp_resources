@@ -38,6 +38,23 @@ class BertTokeniserWrapper():
             new_sentences.append(tokens)
         return new_sentences
 
+    def merge_words(self, words):
+        merged = list()
+        s_mapping = list()
+        i = 0
+        for j, w in enumerate(words):
+            # s_mapping.append(i)
+            if w.startswith("##"):
+                merged[-1] += w.replace("##", "")
+                s_mapping.append(s_mapping[-1])
+            else:
+                merged.append(w)
+                s_mapping.append(s_mapping[-1] + 1 if len(s_mapping) > 0 else 0)
+
+            # if j < len(words) - 1 and not words[j+1].startswith("##"):
+            #     i += 1
+        return merged, s_mapping
+
     def tokenise(self, sentences):
         indexed_tokens = list()
         segments_class = list()
@@ -102,8 +119,25 @@ class GenericBertWrapper(Module):
         if self.eval_mode:
             with torch.no_grad():
                 out = self.bert_model(tokens, segment_ids, attention_mask=attention_masks, **kwargs)
-        else: out = self.bert_model(tokens, segment_ids, attention_mask=attention_masks, **kwargs)
-        return out
+        else:
+            out = self.bert_model(tokens, segment_ids, attention_mask=attention_masks, **kwargs)
+        return {"out": out, "bert_in": {"str_tokens": str_tokens, "ids": tokens, "segment_ids": segment_ids,
+                                        "attention_mask": attention_masks}}
+
+    ### TODO test it!
+    def get_word_hidden_states(self, hidden_states, mapping):
+        new_states = torch.zeros(*mapping.shape, hidden_states.shape[-1])
+        max_val = 0
+        states_counter = torch.zeros(*mapping.shape)
+        for i, b_m in enumerate(mapping):
+            b_hs = hidden_states[i]
+            for j, v in enumerate(b_m):
+                if v > max_val:
+                    max_val = v
+                new_states[i][v] = new_states[i][v] + b_hs[j]
+                states_counter[i][v] = states_counter[i][v] + 1
+        new_states = new_states / states_counter.unsqueeze(-1)
+        return new_states
 
 
 class BertWrapper(GenericBertWrapper):
@@ -114,9 +148,12 @@ class BertWrapper(GenericBertWrapper):
     def forward(self, sentences, **kwargs):
         if "output_all_encoded_layers" not in kwargs:
             kwargs["output_all_encoded_layers"] = False
-        hidden_states, pooled_output = super(BertWrapper, self).forward(sentences, **kwargs)
+        bert_out = super(BertWrapper, self).forward(sentences, **kwargs)
+        hidden_states, pooled_output = bert_out["out"]
+
         # sentence_embeddings = hidden_states[:, 0, :]
-        return {"cls_states":hidden_states[:,0], "hidden_states": hidden_states, "sentence_embedding": pooled_output}
+        return {"cls_states": hidden_states[:, 0], "hidden_states": hidden_states, "sentence_embedding": pooled_output}, \
+               bert_out["bert_in"]
 
 
 class BertSentencePredictionWrapper(GenericBertWrapper):
@@ -127,5 +164,6 @@ class BertSentencePredictionWrapper(GenericBertWrapper):
     def forward(self, sentences, **kwargs):
         if "next_sentence_label" not in kwargs:
             kwargs["next_sentence_label"] = None
-        sent_class_logits = super(BertSentencePredictionWrapper, self).forward(sentences, **kwargs)
+        bert_out = super(BertSentencePredictionWrapper, self).forward(sentences, **kwargs)
+        sent_class_logits = bert_out["out"]
         return sent_class_logits
