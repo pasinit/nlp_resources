@@ -1,3 +1,4 @@
 {
+  "nlp_models/bert_tester.py": true,
   "tests/twenty_newsgroup_tests.py": true
 }

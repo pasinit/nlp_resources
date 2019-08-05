@@ -124,6 +124,21 @@ class GenericBertWrapper(Module):
         return {"out": out, "bert_in": {"str_tokens": str_tokens, "ids": tokens, "segment_ids": segment_ids,
                                         "attention_mask": attention_masks}}
 
+    ### TODO test it!
+    def get_word_hidden_states(self, hidden_states, mapping):
+        new_states = torch.zeros(max(mapping) + 1 , hidden_states.shape[-1]).to(hidden_states.device)
+        max_val = 0
+        states_counter = torch.zeros(max(mapping) + 1).to(hidden_states.device)
+        # for i, b_m in enumerate(mapping):
+        #     b_hs = hidden_states[i]
+        for j, v in enumerate(mapping):
+            if v > max_val:
+                max_val = v
+            new_states[v] = new_states[v] + hidden_states[j]
+            states_counter[v] = states_counter[v] + 1
+        new_states = new_states / states_counter.unsqueeze(-1)
+        return new_states
+
 
 class BertWrapper(GenericBertWrapper):
     def __init__(self, model_name, device, token_limit=100):
