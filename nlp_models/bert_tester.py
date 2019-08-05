@@ -59,7 +59,7 @@ class BertTester(TestCase):
         hidde_states = outputs["hidden_states"]
         words, mapping = bert.bert_tokeniser.merge_words(token_inputs["str_tokens"][0])
         word_hidden_states = bert.get_word_hidden_states(hidde_states[0], mapping)
-        assert len(words) == word_hidden_states.shape[0]
+        assert len(words) == word_hidden_states.shape[1]
 
 
 
