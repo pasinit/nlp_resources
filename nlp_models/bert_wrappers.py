@@ -44,7 +44,7 @@ class BertTokeniserWrapper():
         i = 0
         for j, w in enumerate(words):
             # s_mapping.append(i)
-            if w.startswith("##") and not w.startswith("###"): ## avoid to merge words that had ## at the beginning not because the segmentation.
+            if w.startswith("##"): ## avoid to merge words that had ## at the beginning not because the segmentation.
                 merged[-1] += w.replace("##", "")
                 s_mapping.append(s_mapping[-1])
             else:
