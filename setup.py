@@ -10,5 +10,6 @@ setup(
     license='',
     author='tommaso',
     author_email='p.tommaso@gmail.com',
-    description=''
+    description='',
+    install_requires=["pytorch_pretrained_bert==0.6.2"]
 )
