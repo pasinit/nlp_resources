@@ -44,7 +44,7 @@ class BertTokeniserWrapper():
         i = 0
         for j, w in enumerate(words):
             # s_mapping.append(i)
-            if w.startswith("##"):
+            if w.startswith("##") and not w.startswith("###"): ## avoid to merge words that had ## at the beginning not because the segmentation.
                 merged[-1] += w.replace("##", "")
                 s_mapping.append(s_mapping[-1])
             else:
@@ -83,15 +83,16 @@ class BertTokeniserWrapper():
         new_att_masks = list()
         new_tokens_class = list()
         for tokens, segment_ids, attention_mask in zip(indexed_tokens, segments_class, attention_masks):
-            if len(tokens) < max_len:
-                segment_ids = segment_ids + [0] * (max_len - len(tokens))
-                attention_mask = attention_mask + [0] * (max_len - len(tokens))
-                tokens = tokens + ([self.bert_tokeniser.vocab["[PAD]"]] * (max_len - len(tokens)))
+            if max_len > 0:
+                if len(tokens) < max_len:
+                    segment_ids = segment_ids + [0] * (max_len - len(tokens))
+                    attention_mask = attention_mask + [0] * (max_len - len(tokens))
+                    tokens = tokens + ([self.bert_tokeniser.vocab["[PAD]"]] * (max_len - len(tokens)))
 
-            else:
-                tokens = tokens[:max_len]
-                segment_ids = segment_ids[:max_len]
-                attention_mask = attention_mask[:max_len]
+                else:
+                    tokens = tokens[:max_len]
+                    segment_ids = segment_ids[:max_len]
+                    attention_mask = attention_mask[:max_len]
             new_att_masks.append(attention_mask)
             new_index_tokens.append(tokens)
             new_tokens_class.append(segment_ids)
@@ -105,7 +106,7 @@ class BertTokeniserWrapper():
 class GenericBertWrapper(Module):
     def __init__(self, bert_model, model_name, device, eval_mode=True, token_limit=100):
         super().__init__()
-        self.bert_tokeniser = BertTokeniserWrapper(model_name, device)
+        self.bert_tokeniser = BertTokeniserWrapper(model_name, device, token_limit=token_limit)
         if eval_mode:
             bert_model.eval()
         self.bert_model = bert_model.to(device)
@@ -116,6 +117,7 @@ class GenericBertWrapper(Module):
 
     def forward(self, sentences, **kwargs):
         str_tokens, tokens, segment_ids, attention_masks = self.bert_tokeniser.tokenise(sentences)
+        print(tokens.shape)
         if self.eval_mode:
             with torch.no_grad():
                 out = self.bert_model(tokens, segment_ids, attention_mask=attention_masks, **kwargs)
@@ -126,14 +128,16 @@ class GenericBertWrapper(Module):
 
     ### TODO test it!
     def get_word_hidden_states(self, hidden_states, mapping):
-        new_states = torch.zeros(max(mapping) + 1 , hidden_states.shape[-1]).to(hidden_states.device)
         max_val = 0
-        states_counter = torch.zeros(max(mapping) + 1).to(hidden_states.device)
-        if len(hidden_states.shape) < 3: #no batch
+        if len(hidden_states.shape) < 3:  # no batch
             hidden_states = hidden_states.unsqueeze(0)
-            states_counter = states_counter.unsqueeze(0)
             mapping = [mapping]
-            new_states = new_states.unsqueeze(0)
+
+        states_counter = torch.zeros(len(mapping), max([x[-1] + 1 for x in mapping])).to(hidden_states.device)
+
+        new_states = torch.zeros(len(mapping), max([x[-1] + 1 for x in mapping]), hidden_states.shape[-1]).to(
+            hidden_states.device)
+
         for i, b_m in enumerate(mapping):
             for j, v in enumerate(b_m):
                 if v > max_val:

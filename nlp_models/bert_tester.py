@@ -2,6 +2,8 @@ import unittest
 from unittest import TestCase
 
 import torch
+import numpy as np
+from tqdm import tqdm
 
 from nlp_models.bert_wrappers import BertSentencePredictionWrapper, BertTokeniserWrapper, BertWrapper, BertNames
 
@@ -32,10 +34,6 @@ class BertTester(TestCase):
         self.assertTrue(len([x for x in tokens[0] if x == "[SEP]"]) == 1)
         self.assertEqual(segment_ids.tolist()[0], correct_token_class)
 
-        # print(tokens)
-        # print(indexed_tokens.tolist())
-        # print(segment_ids.tolist())
-        # print(attention_masks.tolist())
         test_pair = (test_sentence, "another stupid sentence")
 
         tokens, indexed_tokens, segment_ids, attention_masks = tokeniser.tokenise([test_pair])
@@ -62,10 +60,19 @@ class BertTester(TestCase):
         assert len(words) == word_hidden_states.shape[1]
 
 
-
+    def test_memory_bert(self):
+        bert = BertWrapper(BertNames.BERT_BASE_MULTILINGUAL_CASED.value, "cuda", token_limit=512)
+        bert.eval()
+        s = " ".join(["cane"] * 298)
+        s = [s] * 200
+        print(np.array(s).shape)
+        for i in tqdm(range(10)):
+            out = bert(s)
+        print("cia")
 
 # if __name__ == "__main__":
 #     BertTester().test_bert_sentence_prediction_output()
 if __name__ == '__main__':
-    BertTester().test_word_merging()
-    unittest.main()
+    # BertTester().test_word_merging()
+    BertTester().test_memory_bert()
+    # unittest.main()
