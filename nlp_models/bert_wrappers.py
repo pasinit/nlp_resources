@@ -117,7 +117,6 @@ class GenericBertWrapper(Module):
 
     def forward(self, sentences, **kwargs):
         str_tokens, tokens, segment_ids, attention_masks = self.bert_tokeniser.tokenise(sentences)
-        print(tokens.shape)
         if self.eval_mode:
             with torch.no_grad():
                 out = self.bert_model(tokens, segment_ids, attention_mask=attention_masks, **kwargs)
