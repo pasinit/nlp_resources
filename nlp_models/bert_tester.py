@@ -10,15 +10,16 @@ from nlp_models.bert_wrappers import BertSentencePredictionWrapper, BertTokenise
 
 class BertTester(TestCase):
 
+
     def test_bert_sentence_prediction_output(self):
         bert_model = BertSentencePredictionWrapper("bert-base-multilingual-cased", "cuda")
-        out = bert_model([("this is a sentence.", "the computer are nice persons!")])
+        out, *_ = bert_model([("this is a sentence.", "the computer are nice persons!")])
         self.assertEqual(out.shape, torch.Size([1, 2]))
         cls = torch.argmax(out, -1)[0].item()
         self.assertEqual(cls, 1)
         print(out.tolist())
 
-        out = bert_model([("this is a sentence", "and this is its consequence")])
+        out, *_ = bert_model([("this is a sentence", "and this is its consequence")])
         self.assertEqual(out.shape, torch.Size([1, 2]))
         cls = torch.argmax(out, -1)[0].item()
         self.assertEqual(cls, 0)
@@ -50,14 +51,11 @@ class BertTester(TestCase):
 
     def test_word_merging(self):
         bert = BertWrapper(BertNames.BERT_BASE_MULTILINGUAL_CASED.value, "cuda")
-        bert.eval()
-        test_sentence = "this is a stupid test for the tokeniser"
+        test_sentence = ["this is a stupid test for the tokeniser".split(" "), "this is a second stupid test for the tokeniser".split(" ")]
         with torch.no_grad():
-            outputs, token_inputs = bert([test_sentence])
+            outputs, bert_in = bert.word_forward(np.array(test_sentence))
         hidde_states = outputs["hidden_states"]
-        words, mapping = bert.bert_tokeniser.merge_words(token_inputs["str_tokens"][0])
-        word_hidden_states = bert.get_word_hidden_states(hidde_states[0], mapping)
-        assert len(words) == word_hidden_states.shape[1]
+        assert max([len(x) for x in test_sentence]) == hidde_states.shape[1]
 
 
     def test_memory_bert(self):
@@ -74,5 +72,5 @@ class BertTester(TestCase):
 #     BertTester().test_bert_sentence_prediction_output()
 if __name__ == '__main__':
     # BertTester().test_word_merging()
-    BertTester().test_memory_bert()
-    # unittest.main()
+    # BertTester().test_memory_bert()
+    unittest.main()

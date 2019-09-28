@@ -1,8 +1,12 @@
 from enum import Enum
+from typing import List, Tuple
 
-from pytorch_pretrained_bert import BertModel, BertForNextSentencePrediction, BertTokenizer
+from numpy.compat import contextlib_nullcontext
 from torch.nn import Module
+import numpy as np
 import torch
+from transformers import BertTokenizer, BertModel, BertForNextSentencePrediction
+from deprecated import deprecated
 
 
 class BertNames(Enum):
@@ -44,7 +48,7 @@ class BertTokeniserWrapper():
         i = 0
         for j, w in enumerate(words):
             # s_mapping.append(i)
-            if w.startswith("##"): ## avoid to merge words that had ## at the beginning not because the segmentation.
+            if w.startswith("##"):  ## avoid to merge words that had ## at the beginning not because the segmentation.
                 merged[-1] += w.replace("##", "")
                 s_mapping.append(s_mapping[-1])
             else:
@@ -102,6 +106,60 @@ class BertTokeniserWrapper():
         attention_masks = torch.LongTensor(new_att_masks).to(self.device)
         return new_sentences, indexed_tokens, tokens_class, attention_masks
 
+    def pad_list(self, l, size, pad_val):
+        padded_l = list()
+        for x in l:
+            if len(x) < size:
+                x = x + [pad_val] * (size - len(x))
+            padded_l.append(x)
+        return padded_l
+
+    def segment_tokenised_words(self, sentences: np.ndarray) -> Tuple[
+        torch.Tensor, List[List[List[str]]], List[List[List[int]]], torch.Tensor, torch.Tensor]:
+        all_tok2seg = list()
+        all_segment_str = list()
+        all_segment_ids = list()
+        attention_mask = list()
+        all_segment_types = list()
+        for sent_tokens in sentences:
+            tok2seg = list()
+            segs = list()
+            loc_attention = list()
+            segment_types = list()
+            curr_id = 0
+            seg_counter = 0
+            for tok in sent_tokens[:self.token_limit]:
+                segments = self.bert_tokeniser.wordpiece_tokenizer.tokenize(tok)
+                mask = [x != self.bert_tokeniser.pad_token for x in segments]
+                segs.extend(segments)
+                loc_attention.extend(mask)
+                segment_types.extend([curr_id] * len(segments))
+                tok2seg.append(list(range(seg_counter, seg_counter + len(segments))))
+
+                if tok == self.bert_tokeniser.sep_token:
+                    curr_id = 1
+            all_segment_ids.append(self.bert_tokeniser.convert_tokens_to_ids(segs))
+            all_tok2seg.append(tok2seg)
+            all_segment_str.append(segs)
+            attention_mask.append(loc_attention)
+            all_segment_types.append(segment_types)
+        padded_len = max([len(x) for x in all_segment_ids])
+        all_segment_ids = self.pad_list(all_segment_ids, padded_len,
+                                        self.bert_tokeniser.pad_token_id)
+        attention_mask = self.pad_list(attention_mask, padded_len, 0)
+        all_segment_types = self.pad_list(all_segment_types, padded_len, 0)
+
+        return torch.LongTensor(all_segment_ids).to(self.device), all_segment_str, all_tok2seg, torch.LongTensor(
+            attention_mask).to(
+            self.device), \
+               torch.LongTensor(all_segment_types).to(self.device)
+
+
+class MergeMode(Enum):
+    AVG = "avg"
+    SUM = "sum"
+    FIRST = "first"
+
 
 class GenericBertWrapper(Module):
     def __init__(self, bert_model, model_name, device, eval_mode=True, token_limit=100):
@@ -117,15 +175,64 @@ class GenericBertWrapper(Module):
 
     def forward(self, sentences, **kwargs):
         str_tokens, tokens, segment_ids, attention_masks = self.bert_tokeniser.tokenise(sentences)
-        if self.eval_mode:
-            with torch.no_grad():
-                out = self.bert_model(tokens, segment_ids, attention_mask=attention_masks, **kwargs)
-        else:
-            out = self.bert_model(tokens, segment_ids, attention_mask=attention_masks, **kwargs)
-        return {"out": out, "bert_in": {"str_tokens": str_tokens, "ids": tokens, "segment_ids": segment_ids,
-                                        "attention_mask": attention_masks}}
+        # if self.eval_mode:
+        #     with torch.no_grad():
+        #         last_hidden_states, *_ = self.bert_model(tokens, segment_ids, attention_mask=attention_masks, **kwargs)
+        # else:
+        with self.get_context():
+            bert_out = self.bert_model(tokens, token_type_ids=segment_ids, attention_mask=attention_masks, **kwargs)
+        return {"out": bert_out,
+                "bert_in": {"str_tokens": str_tokens, "ids": tokens, "segment_ids": segment_ids,
+                            "attention_mask": attention_masks}}
 
-    ### TODO test it!
+    def get_context(self):
+        if self.eval_mode:
+            return torch.no_grad()
+        else:
+            return contextlib_nullcontext
+
+    def merge_hidden_states(self, hidden_states, tok2seg: List[List[List[int]]], merge_mode: MergeMode):
+        max_size = max([len(x) for x in tok2seg])
+        merged_hidden_states = torch.zeros(hidden_states.shape[0], max_size, hidden_states.shape[-1])
+
+        for i in range(len(hidden_states)):
+            hs_i = hidden_states[i]
+            t2s_i: List[List[int]] = tok2seg[i]
+            merged_hs_i = list()
+            for seg_ids in t2s_i:
+                hidden_segs = hs_i[np.array(seg_ids)]
+                if merge_mode == MergeMode.AVG:
+                    merged = torch.mean(hidden_segs, 0)
+                elif merge_mode == MergeMode.SUM:
+                    merged = torch.sum(hidden_segs, 0)
+                else:
+                    merged = hidden_segs[0]
+                merged_hs_i.append(merged)
+            merged_hidden_states[i, :len(merged_hs_i), :] = torch.stack(merged_hs_i, 0)
+        return merged_hidden_states
+
+    def word_forward(self, sentences: np.ndarray, **kwargs):
+        """
+        :param sentences: list of already tokenised sentences, i.e., List[List[str]]
+        :param kwargs: optional arguments to pass to bert model
+        :return: Tensor with shape [sentences.shape[0], sentences.shape[1], hidden_size]
+        """
+        if "merge_mode" in kwargs:
+            merge_mode = kwargs["merge_mode"]
+        else:
+            merge_mode = MergeMode.AVG
+        all_segments, all_segments_str, all_tok2seg, attention_mask, token_type_ids = self.bert_tokeniser.segment_tokenised_words(
+            sentences)
+        with self.get_context():
+            bert_out = self.bert_model(all_segments, token_type_ids=token_type_ids,
+                                       attention_mask=attention_mask, **kwargs)
+        last_hidden_states = bert_out[0]
+        merged_hidden_states = self.merge_hidden_states(last_hidden_states, all_tok2seg, merge_mode)
+        return {"out": [merged_hidden_states] + list(bert_out[1:]),
+                "bert_in": {"str_tokens": sentences, "ids": all_segments, "token_type_ids": token_type_ids,
+                            "attention_mask": attention_mask}}
+
+    @deprecated(version='1.0', reason="use word_forward function instead")
     def get_word_hidden_states(self, hidden_states, mapping):
         max_val = 0
         if len(hidden_states.shape) < 3:  # no batch
@@ -148,17 +255,19 @@ class GenericBertWrapper(Module):
 
 
 class BertWrapper(GenericBertWrapper):
-    def __init__(self, model_name, device, token_limit=100):
+    def __init__(self, model_name, device, eval_mode=True, token_limit=100):
         model = BertModel.from_pretrained(model_name)
-        super().__init__(model, model_name, device, True, token_limit)
+        super().__init__(model, model_name, device, eval_mode, token_limit)
 
     def forward(self, sentences, **kwargs):
-        if "output_all_encoded_layers" not in kwargs:
-            kwargs["output_all_encoded_layers"] = False
         bert_out = super(BertWrapper, self).forward(sentences, **kwargs)
         hidden_states, pooled_output = bert_out["out"]
+        return {"cls_states": hidden_states[:, 0], "hidden_states": hidden_states, "sentence_embedding": pooled_output}, \
+               bert_out["bert_in"]
 
-        # sentence_embeddings = hidden_states[:, 0, :]
+    def word_forward(self, sentences: np.ndarray, **kwargs):
+        bert_out = super(BertWrapper, self).word_forward(sentences, **kwargs)
+        hidden_states, pooled_output, *_ = bert_out["out"]
         return {"cls_states": hidden_states[:, 0], "hidden_states": hidden_states, "sentence_embedding": pooled_output}, \
                bert_out["bert_in"]
 
