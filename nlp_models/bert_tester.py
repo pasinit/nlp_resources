@@ -10,7 +10,6 @@ from nlp_models.bert_wrappers import BertSentencePredictionWrapper, BertTokenise
 
 class BertTester(TestCase):
 
-
     def test_bert_sentence_prediction_output(self):
         bert_model = BertSentencePredictionWrapper("bert-base-multilingual-cased", "cuda")
         out, *_ = bert_model([("this is a sentence.", "the computer are nice persons!")])
@@ -50,13 +49,17 @@ class BertTester(TestCase):
         # print(attention_masks.tolist())
 
     def test_word_merging(self):
-        bert = BertWrapper(BertNames.BERT_BASE_MULTILINGUAL_CASED.value, "cuda")
+        bert = BertWrapper(BertNames.BERT_BASE_MULTILINGUAL_CASED.value, "cuda", token_limit=10)
         test_sentence = ["this is a stupid test for the tokeniser".split(" "), "this is a second stupid test for the tokeniser".split(" ")]
         with torch.no_grad():
             outputs, bert_in = bert.word_forward(np.array(test_sentence))
         hidde_states = outputs["hidden_states"]
         assert max([len(x) for x in test_sentence]) == hidde_states.shape[1]
-
+        listoftests = ["this is a second stupid test for the tokeniser".split(" ")]* 100
+        with torch.no_grad():
+            outputs, bert_in = bert.word_forward(np.array(listoftests))
+        hidde_states = outputs["hidden_states"]
+        assert max([len(x) for x in test_sentence]) == hidde_states.shape[1]
 
     def test_memory_bert(self):
         bert = BertWrapper(BertNames.BERT_BASE_MULTILINGUAL_CASED.value, "cuda", token_limit=512)
@@ -71,6 +74,6 @@ class BertTester(TestCase):
 # if __name__ == "__main__":
 #     BertTester().test_bert_sentence_prediction_output()
 if __name__ == '__main__':
-    # BertTester().test_word_merging()
+    BertTester().test_word_merging()
     # BertTester().test_memory_bert()
-    unittest.main()
+    # unittest.main()
