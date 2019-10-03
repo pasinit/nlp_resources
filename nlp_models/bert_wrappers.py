@@ -1,3 +1,4 @@
+import math
 from enum import Enum
 from typing import List, Tuple
 
@@ -216,7 +217,7 @@ class GenericBertWrapper(Module):
                       sep_id, add_sep, pad_id):
         ids = self.__get_batched_elem(ids, cls_id if add_cls else None, sep_id if add_sep else None, pad_id)
         types = self.__get_batched_elem(types, 0 if add_cls else None, 0 if add_sep else None, pad_id)
-        mask = self.__get_batched_elem(mask, 0 if add_cls else None, 0 if add_sep else None, pad_id)
+        mask = self.__get_batched_elem(mask, 1 if add_cls else None, 1 if add_sep else None, pad_id)
         tok2seg = self.__get_batched_elem(tok2seg, [] if add_cls else None, [] if add_sep else None, None)
 
         seg_batch.append(ids)
@@ -281,7 +282,7 @@ class GenericBertWrapper(Module):
                 t2s = tok2seg[i]
                 i_non_starting_segments = non_starting_segments[i]
                 i_seg2tok = seg2token[i]
-                if len(ids) < self.token_limit:
+                if len(ids) < self.token_limit - 2:
                     self.__pad_and_add(ids, types, mask, t2s, seg_batch, type_ids_batch, mask_batch, tok2seg_batch,
                                        cls_id, add_cls,
                                        sep_id, add_sep, pad_id)
@@ -291,8 +292,13 @@ class GenericBertWrapper(Module):
                     segidx2batchidx.append([])
                     end_index = 0
                     k = 0
+                    if len(seg_batch) + math.ceil(len(ids) / (self.token_limit - 2)) > batch_size:
+                        yield self.__get_data_to_yield(seg_batch, type_ids_batch, mask_batch, tok2seg_batch,
+                                                       segidx2batchidx)
+                        seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2batchidx = self.__clean_lists(
+                            seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2batchidx)
                     while k < len(ids):
-                        for j in range(min(k + self.token_limit - 2, len(ids) - 1), 0, -1):
+                        for j in range(min(k + self.token_limit - 2, len(ids)), 0, -1):
                             if (not j in i_non_starting_segments) or (j == len(ids) - 1):
                                 end_index = j
                                 break
@@ -300,11 +306,11 @@ class GenericBertWrapper(Module):
                         #     end_index = len(ids)
                         # if end_index - k == 0:
                         start_tok_idx = i_seg2tok[k]
-                        end_tok_idx = i_seg2tok[end_index]
+                        end_tok_idx = i_seg2tok[end_index if end_index < len(ids) else end_index - 1]
                         if end_tok_idx == len(t2s) - 1:
                             end_tok_idx += 1
-                        if end_index == len(ids) - 1:
-                            end_index += 1
+                        # if end_index == len(ids) - 1:
+                        #     end_index += 1
                         self.__pad_and_add(ids[k:end_index], types[k:end_index], mask[k:end_index], t2s[start_tok_idx:end_tok_idx],
                                            seg_batch, type_ids_batch, mask_batch,
                                            tok2seg_batch, cls_id, add_cls, sep_id, add_sep, pad_id)
@@ -319,8 +325,9 @@ class GenericBertWrapper(Module):
                     yield self.__get_data_to_yield(seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2batchidx)
                     seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2batchidx = self.__clean_lists(
                         seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2batchidx)
-            yield self.__get_data_to_yield(seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2batchidx)
-            self.__clean_lists(seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2batchidx)
+            if len(seg_batch) > 0:
+                yield self.__get_data_to_yield(seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2batchidx)
+                self.__clean_lists(seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2batchidx)
         return batch_generator
 
     def __merge_batch_back(self, batch, batched_tok2seg, oldidx2newidx):
@@ -403,6 +410,7 @@ class GenericBertWrapper(Module):
                     merged = hidden_segs[0]
                 merged_hs_i.append(merged)
             merged_hidden_states[i, :len(merged_hs_i), :] = torch.stack(merged_hs_i, 0)
+            # merged_hidden_states.append(torch.stack(merged_hs_i, 0))
         return merged_hidden_states
 
     @deprecated(version='1.0', reason="use word_forward function instead")
