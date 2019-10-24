@@ -102,7 +102,7 @@ class BertTester(TestCase):
         vanilla_bank_2 = vanilla_out_2[0][12]
         vanilla_bank_3 = vanilla_out_3[0][12]
 
-        bert = BertWrapper(bert_model_name, "cuda", token_limit=100)
+        bert = BertWrapper(bert_model_name, "cpu", token_limit=100)
         with torch.no_grad():
             outputs, bert_in = bert.word_forward(np.array([test_s1.split(), test_s2.split(), test_s3.split()]))
         hidden_states = outputs["hidden_states"]
@@ -143,8 +143,8 @@ class BertTester(TestCase):
         with torch.no_grad():
             outputs, bert_in = bert.word_forward(np.array([test_s1.split(), test_s2.split(), test_s3.split()]))
         hidden_states = outputs["hidden_states"]
-        spring1 = hidden_states[0][2]
         spring2 = hidden_states[1][10]
+        spring1 = hidden_states[0][2]
         spring3 = hidden_states[2][4]
         cossim = torch.nn.CosineSimilarity(-1)
         self.assertGreater(cossim(spring1, spring3), cossim(spring2, spring3))
