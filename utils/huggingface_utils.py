@@ -1,4 +1,4 @@
-from typing import Tuple, List
+from typing import Tuple, List, Dict
 
 import numpy as np
 from transformers import PreTrainedTokenizer
@@ -19,21 +19,25 @@ def get_needed_start_end_sentence_tokens(model_name, tokeniser: PreTrainedTokeni
         return None, None
 
 
-def encode_word_pieces(tokeniser: PreTrainedTokenizer, sentences: np.ndarray, token_limit, model_name) -> Tuple[
-    List[List[str]], List[List[int]], List[List[int]], List[List[bool]], List[List[List[int]]]]:
+def encode_word_pieces(tokeniser: PreTrainedTokenizer, sentences: np.ndarray, token_limit, model_name) -> \
+        Tuple[List[List[str]], List[List[int]], List[List[int]], List[List[bool]], List[List[List[int]]]]:
     all_tok2seg = list()
     all_segment_str: List[List[str]] = list()
     all_segment_ids: List[List[int]] = list()
     attention_mask: List[List[bool]] = list()
     all_segment_types: List[List[int]] = list()
-    for sent_tokens in sentences:
+    all_labels: List[List[int]] = list()
+    for s_i in range(len(sentences)):
+        sent_tokens = sentences[s_i]
+        i_labels = [None] * len(sent_tokens)
         tok2seg = list()
         segs: List[str] = list()
         loc_attention = list()
         segment_types = list()
+        loc_labels = list()
         curr_id = 0
         seg_counter = 0
-        for tok in sent_tokens[:token_limit if token_limit > 0 else len(sent_tokens)]:
+        for tok, label in zip(sent_tokens[:token_limit if token_limit > 0 else len(sent_tokens)], i_labels):
             segments = tokeniser.tokenize(tok, **get_tokenizer_kwargs(model_name))
             mask = [True] * len(segments)
             start_idx_seg = len(segs)
@@ -60,11 +64,11 @@ def get_model_kwargs(model_name, device, kwargs, type_ids, mask):
     #     kwargs["attention_mask"] = mask
     #     return kwargs
 
-    token_type_ids = torch.LongTensor(type_ids).to(device) if type_ids is not None else None
+    token_type_ids = type_ids if type_ids is not None else None
     if token_type_ids is not None:
         if len(token_type_ids.shape) < 2:
             token_type_ids = token_type_ids.unsqueeze(0)
-    mask = torch.LongTensor(mask).to(device) if mask is not None else None
+    mask = mask if mask is not None else None
     if mask is not None:
         if len(mask.shape) < 2:
             mask = mask.unsqueeze(0)

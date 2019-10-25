@@ -1,8 +1,11 @@
 import math
+from abc import ABC, abstractmethod
+from random import shuffle, random
+
 import torch
 from torch.utils.data.dataset import IterableDataset
 from transformers import PreTrainedTokenizer
-from typing import Iterable
+from typing import Iterator
 
 from utils.huggingface_utils import get_needed_start_end_sentence_tokens, encode_word_pieces
 import numpy as np
@@ -191,7 +194,7 @@ def get_batcher(model_name, all_segments, token_type_ids, attention_mask, tokeni
         return end_tok_idx, start_tok_idx
 
     def get_end_index(end_index, i_non_starting_segments, ids, k):
-        for j in range(min(k + token_limit - 2, len(ids)), 0, -1):
+        for j in range(min(k + token_limit - 2, len(ids)) if token_limit > 0 else len(ids), 0, -1):
             if (not j in i_non_starting_segments) or (j == len(ids) - 1):
                 end_index = j
                 break
@@ -200,12 +203,35 @@ def get_batcher(model_name, all_segments, token_type_ids, attention_mask, tokeni
     return batch_generator
 
 
+class ResettableIterator(Iterator, ABC):
+    @abstractmethod
+    def reset(self):
+        pass
+
+
+class ResettableListIterator(ResettableIterator):
+    def __init__(self, collection, shuffle=True):
+        self.collection = collection
+        self.shuffle = shuffle
+        self.reset()
+
+    def __next__(self):
+        if len(self.idxs) == 0:
+            self.reset()
+            raise StopIteration()
+        return self.collection[self.idxs.pop()]
+
+    def reset(self):
+        self.idxs = list(range(len(self.collection)))
+        if self.shuffle:
+            shuffle(self.idxs)
+
+
 class TextDataset(IterableDataset):
-    def __init__(self, string_stream:Iterable, model_name, tokeniser, token_limit, device, batch_size,
+    def __init__(self, string_stream: ResettableListIterator, model_name, tokeniser, token_limit, device, batch_size,
                  max_sentences_in_memory=10000):
         """
-
-        :param string_stream: stream of already tokenised sentences.
+        :param string_stream: Iterator over sentences that have been already tokenised.
         :param model_name: name of the model to feed with this dataset.
         :param tokeniser: tokeniser corresponding to the model.
         :param token_limit: maximum number of token per sentence.
@@ -220,26 +246,38 @@ class TextDataset(IterableDataset):
         self.token_limit = token_limit
         self.device = device
         self.batch_size = batch_size
+        self.batch_buffer = list()
+        self.stop_iteration = False
 
     def __iter__(self):
-        def iterator():
-            string_batch = list()
-            while True:
-                for _ in range(self.max_sentences_in_memory):
-                    try:
-                        string_batch.append(next(self.string_stream))
-                    except EOFError:
-                        pass
-                all_segments_str, all_segments, token_type_ids, attention_mask, all_tok2seg = encode_word_pieces(
-                    self.tokeniser, np.array(string_batch), self.token_limit, self.model_name)
-                batch_iterator = get_batcher(self.model_name, all_segments, token_type_ids, attention_mask,
-                                             self.tokeniser,
-                                             self.token_limit, self.device, tok2seg=all_tok2seg,
-                                             batch_size=self.batch_size)
-                for batch in batch_iterator():
-                    segments, type_ids, mask, tok2seg, oldidx2newidx = [batch[x] for x in
-                                                                        ["seg", "type", "mask", "tok2seg",
-                                                                         "segid2batchidx"]]
-                    yield segments, type_ids, mask, tok2seg, oldidx2newidx
+        return self
 
-        return iterator
+    def __next__(self):
+        if len(self.batch_buffer) > 0:
+            return self.batch_buffer.pop()
+        elif self.stop_iteration:
+            self.stop_iteration = False
+            self.string_stream.reset()
+            raise StopIteration()
+        else:
+            self.fill_buffer()
+            return self.batch_buffer.pop()
+
+    def fill_buffer(self):
+        string_batch = list()
+        for _ in range(self.max_sentences_in_memory):
+            try:
+                string_batch.append(next(self.string_stream))
+            except StopIteration:
+                self.stop_iteration = True
+        all_segments_str, all_segments, token_type_ids, attention_mask, all_tok2seg = encode_word_pieces(
+            self.tokeniser, np.array(string_batch), self.token_limit, self.model_name)
+        batch_iterator = get_batcher(self.model_name, all_segments, token_type_ids, attention_mask,
+                                     self.tokeniser,
+                                     self.token_limit, self.device, tok2seg=all_tok2seg,
+                                     batch_size=self.batch_size)
+        for batch in batch_iterator():
+            segments, type_ids, mask, tok2seg, oldidx2newidx = [batch[x] for x in
+                                                                ["seg", "type", "mask", "tok2seg",
+                                                                 "segid2batchidx"]]
+            self.batch_buffer.append((segments, type_ids, mask, tok2seg, oldidx2newidx))

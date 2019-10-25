@@ -110,7 +110,6 @@ class GenericHuggingfaceWrapper(Module):
                 j_seg_ids = list(range(1, len([x + 1 for y in seg_ids[j] for x in y if x is not None and x != []]) + 1))
                 j_u_to_be_merged = u_to_be_merged[j][j_seg_ids]
                 new_to_be_merged.append(j_u_to_be_merged)
-
             merged = torch.cat(new_to_be_merged, 0)
             batch_merged.append(merged)
         assert len(batch_merged) == len(oldidx2newidx)
@@ -158,7 +157,7 @@ class GenericHuggingfaceWrapper(Module):
         #        "bert_in": }
         # hidden_states, pooled_output = zip(*hidden_states)
 
-        return {"hidden_states": torch.stack(hidden_states, 0)}, \
+        return {"hidden_states": torch.stack(hidden_states, 0).to(self.device)}, \
                {"str_tokens": sentences, "ids": all_segments, "token_type_ids": token_type_ids,
                 "attention_mask": attention_mask}
 
