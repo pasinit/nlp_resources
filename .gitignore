@@ -4,3 +4,5 @@
 .ideaold3
 nlp_models/__pycache__
 *__pycache__*
+*__init__*
+.*
