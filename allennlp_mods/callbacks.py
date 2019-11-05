@@ -147,10 +147,12 @@ class ValidateAndWrite(Validate):
                 metrics = trainer.val_metrics
                 if self.name is not None:
                     metrics = {self.name + "_" + k: v for k, v in metrics.items()}
-                wdb.log(metrics)
+                metrics["step"] = trainer.epoch_number
+                wdb.log(metrics, step=trainer.epoch_number)
         # If the trainer has a moving average, restore
         for moving_average in self.moving_averages:
             moving_average.restore()
 
         self.writer.set_epoch(trainer.epoch_number + 1)
         self.writer.reset()
+        trainer.model.get_metrics(True)

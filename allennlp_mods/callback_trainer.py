@@ -133,6 +133,8 @@ class MyCallbackTrainer(TrainerBase):
                                             shuffle=self.shuffle)
         self.training_batches = lazy_groups_of(raw_train_generator, num_gpus)
         self.num_training_batches = math.ceil(self.iterator.get_num_batches(self.training_data) / num_gpus)
+        ## TODO if maximum_samples_per_batch is defined than self.num_training_batches is not reliable and it should
+        ## be computed differently
 
     def batch_loss(self, batch_group: List[TensorDict], for_training: bool) -> torch.Tensor:
         """
