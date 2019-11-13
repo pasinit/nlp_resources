@@ -15,11 +15,13 @@ logger = logging.getLogger(__name__)
 
 
 class OutputWriter():
-    def __init__(self, output_file, labeldict):
+    def __init__(self, output_file, labeldict, write_labels=False):
         self.epoch = 0
         self.outfile = output_file + ".{}"
         self.writer = open(output_file.format(self.epoch), "w")
         self.labeldict = labeldict
+        self.write_labels = write_labels
+
 
     def write(self, outs):
         """
@@ -41,7 +43,8 @@ class OutputWriter():
         if ids is not None and type(ids) is torch.Tensor:
             ids = ids.flatten().tolist()
         elif ids is not None:
-            ids = [x for i in ids for x in i]
+            if type(ids[0]) == list:
+                ids = [x for i in ids for x in i]
         assert len(predictions) == len(labels)
         if ids is not None:
             assert len(predictions) == len(ids)
@@ -49,7 +52,10 @@ class OutputWriter():
             p,l = predictions[i],labels[i]
             if ids is not None:
                 id = ids[i]
-            out_str = (id if ids is not None else "") + "\t" + self.labeldict[p] + "\t" + self.labeldict[l] + "\n"
+            out_str = (id if ids is not None else "") + "\t" +self.labeldict[p]
+            if self.write_labels:
+                out_str += "\t" + self.labeldict[l]
+            out_str += "\n"
             self.writer.write(out_str)
 
     def close(self):
