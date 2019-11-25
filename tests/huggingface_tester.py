@@ -7,9 +7,9 @@ from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModel
 
 from nlp_models.huggingface_wrappers import GenericHuggingfaceWrapper, HuggingfaceModelNames
-from utils.huggingface_utils import get_needed_start_end_sentence_tokens, get_tokenizer_kwargs
+from nlp_utils.huggingface_utils import get_needed_start_end_sentence_tokens, get_tokenizer_kwargs
 
-from utils.huggingface_utils import get_model_kwargs
+from nlp_utils.huggingface_utils import get_model_kwargs
 
 
 class HuggingfaceTester(TestCase):

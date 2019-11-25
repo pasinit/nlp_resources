@@ -7,7 +7,7 @@ from torch.utils.data.dataset import IterableDataset
 from transformers import PreTrainedTokenizer
 from typing import Iterator
 
-from utils.huggingface_utils import get_needed_start_end_sentence_tokens, encode_word_pieces
+from nlp_utils.huggingface_utils import get_needed_start_end_sentence_tokens, encode_word_pieces
 import numpy as np
 
 

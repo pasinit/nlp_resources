@@ -9,7 +9,7 @@ import torch
 from transformers import BertTokenizer, BertModel, BertForNextSentencePrediction
 from deprecated import deprecated
 
-from utils.huggingface_utils import encode_word_pieces
+from nlp_utils.huggingface_utils import encode_word_pieces
 
 
 class BertNames(Enum):

@@ -10,9 +10,9 @@ from data_io.batchers import get_batcher
 from nlp_models.bert_wrappers import MergeMode
 import numpy as np
 
-from utils.huggingface_utils import encode_word_pieces
+from nlp_utils.huggingface_utils import encode_word_pieces
 
-from utils.huggingface_utils import get_model_kwargs
+from nlp_utils.huggingface_utils import get_model_kwargs
 
 
 class HuggingfaceModelNames(Enum):
