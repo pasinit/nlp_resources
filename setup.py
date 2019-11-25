@@ -4,7 +4,7 @@ setup(
     name='nlp_resources',
     version='1.0',
     # py_modules=["twenty_newsgroup"],
-    packages = ["data_io", "nlp_models", "nlp_resources", "utils", "allennlp_mods"],
+    packages = ["data_io", "nlp_models", "nlp_resources", "nlp_utils", "allennlp_mods"],
     url='https://github.com/tommy9114/nlp_resources',
     license='',
     author='tommaso',
