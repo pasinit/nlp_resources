@@ -1,9 +1,8 @@
 import traceback
 
 from allennlp.common.checks import ConfigurationError
-from allennlp.training.callbacks import handle_event, Checkpoint
+from allennlp.training.callbacks import handle_event, Checkpoint, Events
 from allennlp.training.checkpointer import Checkpointer
-from sqlalchemy.event import Events
 
 
 class MyCheckpoint(Checkpoint):
