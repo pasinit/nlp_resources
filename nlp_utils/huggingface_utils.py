@@ -18,6 +18,26 @@ def get_needed_start_end_sentence_tokens(model_name, tokeniser: PreTrainedTokeni
     else:
         return None, None
 
+def get_word_hidden_states(hidden_states, mapping):
+    max_val = 0
+    if len(hidden_states.shape) < 3:  # no batch
+        hidden_states = hidden_states.unsqueeze(0)
+        mapping = [mapping]
+
+    states_counter = torch.zeros(len(mapping), max([x[-1] + 1 for x in mapping])).to(hidden_states.device)
+
+    new_states = torch.zeros(len(mapping), max([x[-1] + 1 for x in mapping]), hidden_states.shape[-1]).to(
+        hidden_states.device)
+
+    for i, b_m in enumerate(mapping):
+        for j, v in enumerate(b_m):
+            if v > max_val:
+                max_val = v
+            new_states[i][v] = new_states[i][v] + hidden_states[i][j]
+            states_counter[i][v] = states_counter[i][v] + 1
+    new_states = new_states / states_counter.unsqueeze(-1)
+    return new_states
+
 
 def encode_word_pieces(tokeniser: PreTrainedTokenizer, sentences: np.ndarray, token_limit, model_name) -> \
         Tuple[List[List[str]], List[List[int]], List[List[int]], List[List[bool]], List[List[List[int]]]]:

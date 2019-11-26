@@ -322,7 +322,7 @@ class GenericBertWrapper(Module):
         return merged_hidden_states
 
     # @deprecated(version='1.0', reason="use word_forward function instead")
-    def get_word_hidden_states(self, hidden_states, mapping):
+    def get_word_hidden_states(hidden_states, mapping):
         max_val = 0
         if len(hidden_states.shape) < 3:  # no batch
             hidden_states = hidden_states.unsqueeze(0)
@@ -341,6 +341,7 @@ class GenericBertWrapper(Module):
                 states_counter[i][v] = states_counter[i][v] + 1
         new_states = new_states / states_counter.unsqueeze(-1)
         return new_states
+
 
 
 class BertWrapper(GenericBertWrapper):
