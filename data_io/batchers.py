@@ -32,6 +32,7 @@ def __clean_lists(seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2b
     type_ids_batch = list()
     mask_batch = list()
     segidx2batchidx = list()
+    segidx2batchidx.append([])
     return seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2batchidx
 
 
