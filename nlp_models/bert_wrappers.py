@@ -164,17 +164,6 @@ class MergeMode(Enum):
     FIRST = "first"
 
 
-class GenericHuggingfaceWrapper(Module):
-    def __init__(self, model, model_name, device, eval_mode=True, token_limit=256):
-        super().__init__()
-        self.bert_tokeniser = BertTokeniserWrapper(model_name, device, token_limit=-1)
-        if eval_mode:
-            model.eval()
-        self.bert_model = model.to(device)
-
-        self.device = device
-        self.token_limit = token_limit
-        self.eval_mode = eval_mode
 
 
 class GenericBertWrapper(Module):
