@@ -15,6 +15,8 @@ def get_needed_start_end_sentence_tokens(model_name, tokeniser: PreTrainedTokeni
         return tokeniser.cls_token, tokeniser.sep_token
     elif model_name.startswith("roberta"):
         return tokeniser.bos_token, tokeniser.eos_token
+    elif model_name.startswith("xlm"):
+        return tokeniser.bos_token, tokeniser.sep_token
     else:
         return None, None
 
@@ -83,7 +85,10 @@ def get_model_kwargs(model_name, device, kwargs, type_ids, mask):
     #             mask = mask.unsqueeze(0)
     #     kwargs["attention_mask"] = mask
     #     return kwargs
-
+    if type(type_ids) == list:
+        type_ids = torch.LongTensor(type_ids).to(device)
+    if type(mask) == list:
+        mask = torch.LongTensor(mask).to(device)
     token_type_ids = type_ids if type_ids is not None else None
     if token_type_ids is not None:
         if len(token_type_ids.shape) < 2:

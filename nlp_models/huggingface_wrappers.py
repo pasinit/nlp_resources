@@ -16,13 +16,13 @@ from nlp_utils.huggingface_utils import get_model_kwargs
 
 
 class HuggingfaceModelNames(Enum):
+    XLM_MLM_100_1280 = "xlm-mlm-100-1280"
     ROBERTA_BASE = "roberta-base"
     XLNET_BASE_CASED = "xlnet-base-cased"
-    BERT_BASE_UNCASED = "bert-base-uncased"
     OPEN_AI_GPT2_BASE = "gpt2"
-
     OPEN_AI_GPT2_MEDIUM = "gpt2-medium"
-    OPEN_AI_GPT2_large = "gpt2-large"
+    BERT_BASE_UNCASED = "bert-base-uncased"
+    # OPEN_AI_GPT2_large = "gpt2-large"
     XLNET_LARGE_CASED = "xlnet-large-cased"
     ROBERTA_LARGE = "roberta-large"
     BERT_BASE_CASED = "bert-base-cased"

@@ -85,11 +85,11 @@ class HuggingfaceTester(TestCase):
         vanilla_out_3 = vanilla_model(torch.LongTensor(test_s3_tok).unsqueeze(0), **kwargs)[0]
         # token_type_ids=torch.LongTensor(token_type_ids_s3).unsqueeze(0))[0]
         index1 = test_s1_b.index("bank") if "bank" in test_s1_b else test_s1_b.index(
-            "Ġbank") if "Ġbank" in test_s1_b else test_s1_b.index("▁bank")
+            "Ġbank") if "Ġbank" in test_s1_b else test_s1_b.index("bank</w>")if "bank</w>" in test_s1_b else test_s1_b.index("▁bank")
         index2 = test_s2_b.index("bank") if "bank" in test_s2_b else test_s2_b.index(
-            "Ġbank") if "Ġbank" in test_s2_b else test_s2_b.index("▁bank")
+            "Ġbank") if "Ġbank" in test_s2_b  else test_s2_b.index("bank</w>")if "bank</w>" in test_s2_b else test_s2_b.index("▁bank")
         index3 = test_s3_b.index("bank") if "bank" in test_s3_b else test_s3_b.index(
-            "Ġbank") if "Ġbank" in test_s3_b else test_s3_b.index("▁bank")
+            "Ġbank") if "Ġbank" in test_s3_b else test_s3_b.index("bank</w>")if "bank</w>" in test_s3_b else  test_s3_b.index("▁bank")
 
         vanilla_bank_1 = vanilla_out_1[0][index1]
         vanilla_bank_2 = vanilla_out_2[0][index2]
