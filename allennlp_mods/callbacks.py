@@ -13,7 +13,6 @@ from allennlp_mods.callback_trainer import MyCallbackTrainer
 
 logger = logging.getLogger(__name__)
 
-
 class OutputWriter():
     def __init__(self, output_file, labeldict, write_labels=False):
         self.epoch = 0
@@ -21,7 +20,6 @@ class OutputWriter():
         self.writer = open(output_file.format(self.epoch), "w")
         self.labeldict = labeldict
         self.write_labels = write_labels
-
 
     def write(self, outs):
         """
@@ -48,11 +46,11 @@ class OutputWriter():
         assert len(predictions) == len(labels)
         if ids is not None:
             assert len(predictions) == len(ids)
-        for i in range(len(predictions)):# p, l in zip(predictions, labels):
-            p,l = predictions[i],labels[i]
+        for i in range(len(predictions)):  # p, l in zip(predictions, labels):
+            p, l = predictions[i], labels[i]
             if ids is not None:
                 id = ids[i]
-            out_str = (id if ids is not None else "") + "\t" +self.labeldict[p]
+            out_str = (id if ids is not None else "") + "\t" + self.labeldict[p]
             if self.write_labels:
                 out_str += "\t" + self.labeldict[l]
             out_str += "\n"
@@ -93,11 +91,13 @@ class WanDBTrainingCallback(Callback):
 @Callback.register("validate_and_write")
 class ValidateAndWrite(Validate):
     def __init__(self, validation_data, validation_iterator, output_writer: OutputWriter = None, name: str = None,
-                 wandb: bool = False):
+                 wandb: bool = False, is_dev=False, metric_to_track=None):
         super().__init__(validation_data, validation_iterator)
         self.name = name
         self.writer = output_writer
         self.wandb = wandb
+        self.is_dev = is_dev
+
 
     @handle_event(Events.VALIDATE)
     def validate(self, trainer: 'MyCallbackTrainer'):
@@ -149,6 +149,8 @@ class ValidateAndWrite(Validate):
                                               val_loss,
                                               batches_this_epoch,
                                               reset=False)
+            if trainer.track_dev_metrics and self.is_dev:
+                trainer.metric_tracker.add_metric(trainer.val_metrics[trainer.metric_name])
             if self.wandb:
                 metrics = trainer.val_metrics
                 if self.name is not None:

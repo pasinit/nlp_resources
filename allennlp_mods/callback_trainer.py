@@ -17,6 +17,7 @@ from allennlp.training import util as training_util
 from allennlp.training.callback_trainer import handle_errors
 from allennlp.training.callbacks import Callback, Events
 from allennlp.training.callbacks.callback_handler import CallbackHandler
+from allennlp.training.metric_tracker import MetricTracker
 
 from allennlp.training.optimizers import Optimizer
 from allennlp.training.trainer_pieces import TrainerPieces
@@ -35,7 +36,10 @@ class MyCallbackTrainer(TrainerBase):
                  shuffle=True,
                  serialization_dir=None,
                  cuda_device=-1,
-                 callbacks=None) -> None:
+                 callbacks=None,
+                 track_dev_metrics=None,
+                 metric_name=None,
+                 metric_should_increase=True) -> None:
         """
         A trainer for doing supervised learning. It just takes a labeled dataset
         and a ``DataIterator``, and uses the supplied ``Optimizer`` to learn the weights
@@ -96,6 +100,10 @@ class MyCallbackTrainer(TrainerBase):
 
         # For capturing overall metrics
         self.metrics: Dict[str, Any] = {}
+        self.metric_tracker = None
+        self.metric_name = metric_name
+        if track_dev_metrics and metric_name is not None:
+            self.metric_tracker = MetricTracker(metric_name=("+" if metric_should_increase else "-") + metric_name)
 
         self.batch_num_total = 0
         self.batch_group: List[TensorDict] = []
