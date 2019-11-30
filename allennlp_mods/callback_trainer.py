@@ -37,9 +37,9 @@ class MyCallbackTrainer(TrainerBase):
                  serialization_dir=None,
                  cuda_device=-1,
                  callbacks=None,
-                 track_dev_metrics=None,
-                 metric_name=None,
-                 metric_should_increase=True) -> None:
+                 track_dev_metrics:bool=False,
+                 metric_name:str=None,
+                 metric_should_increase:bool=True) -> None:
         """
         A trainer for doing supervised learning. It just takes a labeled dataset
         and a ``DataIterator``, and uses the supplied ``Optimizer`` to learn the weights
@@ -102,6 +102,7 @@ class MyCallbackTrainer(TrainerBase):
         self.metrics: Dict[str, Any] = {}
         self.metric_tracker = None
         self.metric_name = metric_name
+        self.track_dev_metrics = track_dev_metrics
         if track_dev_metrics and metric_name is not None:
             self.metric_tracker = MetricTracker(metric_name=("+" if metric_should_increase else "-") + metric_name)
 

@@ -13,6 +13,7 @@ from allennlp_mods.callback_trainer import MyCallbackTrainer
 
 logger = logging.getLogger(__name__)
 
+
 class OutputWriter():
     def __init__(self, output_file, labeldict, write_labels=False):
         self.epoch = 0
@@ -98,7 +99,6 @@ class ValidateAndWrite(Validate):
         self.wandb = wandb
         self.is_dev = is_dev
 
-
     @handle_event(Events.VALIDATE)
     def validate(self, trainer: 'MyCallbackTrainer'):
         trainer.model.get_metrics(True)
@@ -151,6 +151,7 @@ class ValidateAndWrite(Validate):
                                               reset=False)
             if trainer.track_dev_metrics and self.is_dev:
                 trainer.metric_tracker.add_metric(trainer.val_metrics[trainer.metric_name])
+                self.is_best_so_far = trainer.metric_tracker.is_best_so_far()
             if self.wandb:
                 metrics = trainer.val_metrics
                 if self.name is not None:
@@ -164,3 +165,6 @@ class ValidateAndWrite(Validate):
         self.writer.set_epoch(trainer.epoch_number + 1)
         self.writer.reset()
         trainer.model.get_metrics(True)
+
+    def get_training_state(self):
+        return {"is_best_so_far": getattr(self, "is_best_so_far", True)}
