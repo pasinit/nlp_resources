@@ -108,6 +108,9 @@ class GenericHuggingfaceWrapper(Module):
             new_to_be_merged = list()
             for j in range(len(seg_ids)):
                 j_seg_ids = list(range(1, len([x + 1 for y in seg_ids[j] for x in y if x is not None and x != []]) + 1))
+                if j >= len(u_to_be_merged):
+                    print("WARNING: {} out of renge of u_to_be_merged. Skipping the rest.")
+                    return None, None
                 j_u_to_be_merged = u_to_be_merged[j][j_seg_ids]
                 new_to_be_merged.append(j_u_to_be_merged)
             merged = torch.cat(new_to_be_merged, 0)
@@ -168,6 +171,8 @@ class GenericHuggingfaceWrapper(Module):
             return contextlib_nullcontext
 
     def __merge_hidden_states(self, hidden_states, tok2seg: List[List[List[int]]], merge_mode: MergeMode):
+        if hidden_states is None:
+            return None
         max_size = max([len(x) for x in tok2seg])
         merged_hidden_states = torch.zeros(len(hidden_states), max_size, len(hidden_states[0][0]))
 
