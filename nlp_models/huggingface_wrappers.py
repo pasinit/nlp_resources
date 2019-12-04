@@ -151,11 +151,14 @@ class GenericHuggingfaceWrapper(Module):
                                                                      "segid2batchidx"]]
                 merged_hidden_states = self.word_forward(segments, type_ids, mask, tok2seg, oldidx2newidx, merge_mode,
                                                          **kwargs)
+                if merged_hidden_states is None:
+                    print("WARNING: skipping an entire batch of sentences!!!\n{}".format("\n".join(sentences)))
+                    return {"hidden_states": None}, \
+                           {"str_tokens": sentences, "ids": all_segments, "token_type_ids": token_type_ids,
+                            "attention_mask": attention_mask}
                 for hs in merged_hidden_states.unbind():
                     hidden_states.append(hs)
-
                 # hidden_states.append([merged_hidden_states] + list(model_out[1:]))
-
         # {"out": hidden_states,
         #        "bert_in": }
         # hidden_states, pooled_output = zip(*hidden_states)
