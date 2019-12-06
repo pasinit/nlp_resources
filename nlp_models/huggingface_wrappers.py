@@ -111,6 +111,9 @@ class GenericHuggingfaceWrapper(Module):
                 if j >= len(u_to_be_merged):
                     print("WARNING: {} out of renge of u_to_be_merged. Skipping the rest.")
                     return None, None
+                if any(x >= len(u_to_be_merged[j]) for x in j_seg_ids):
+                    print("WARNING: {} out of renge of u_to_be_merged. Skipping the rest.")
+                    return None, None
                 j_u_to_be_merged = u_to_be_merged[j][j_seg_ids]
                 new_to_be_merged.append(j_u_to_be_merged)
             merged = torch.cat(new_to_be_merged, 0)
