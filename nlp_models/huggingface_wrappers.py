@@ -155,7 +155,7 @@ class GenericHuggingfaceWrapper(Module):
                 merged_hidden_states = self.word_forward(segments, type_ids, mask, tok2seg, oldidx2newidx, merge_mode,
                                                          **kwargs)
                 if merged_hidden_states is None:
-                    print("WARNING: skipping an entire batch of sentences!!!\n{}".format("\n".join(sentences)))
+                    print("WARNING: skipping an entire batch of sentences!!!\n{}".format("\n".join(list(sentences))))
                     return {"hidden_states": None}, \
                            {"str_tokens": sentences, "ids": all_segments, "token_type_ids": token_type_ids,
                             "attention_mask": attention_mask}
