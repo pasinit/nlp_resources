@@ -25,7 +25,7 @@ from allennlp.training.trainer_pieces import TrainerPieces
 logger = logging.getLogger(__name__)
 
 
-@TrainerBase.register("mycallback")
+@TrainerBase.register("enhanced_callback_trainer")
 class MyCallbackTrainer(TrainerBase):
     def __init__(self,
                  model: Model,
