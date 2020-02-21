@@ -1,7 +1,7 @@
 from typing import Dict
+
 from lxml import etree
 
-from config.nlp_resources_config import load_data_config
 from nlp_utils.utils import get_pos_from_key, get_simplified_pos
 
 
@@ -91,54 +91,3 @@ class Lemma2Synsets(dict):
         for lemmapos, golds in lemmapos2gold.items():
             lemmapos2gold[lemmapos] = set(filter(lambda x: x is not None, [gold_transformer(g) for g in golds]))
         return Lemma2Synsets(data=lemmapos2gold)
-
-    @staticmethod
-    def offsets_from_wn_sense_index():
-        lemmapos2gold = dict()
-        data_config = load_data_config()
-        with open(data_config["wordnet_path"]) as lines:
-            for line in lines:
-                fields = line.strip().split(" ")
-                key = fields[0]
-                pos = get_pos_from_key(key)
-                offset = "wn:" + fields[1] + pos
-                lexeme = key.split("%")[0] + "#" + pos
-                golds = lemmapos2gold.get(lexeme, set())
-                golds.add(offset)
-                lemmapos2gold[lexeme] = golds
-        return Lemma2Synsets(data=lemmapos2gold)
-
-    @staticmethod
-    def from_bn_mapping(langs=("en"), sense_inventory=None, **kwargs):
-        reliable = True
-        # if sense_inventory is not None and "bnoffsets" in sense_inventory:
-        #     reliable = "bnoffsets_reliable" == sense_inventory
-        lemmapos2gold = dict()
-        for lang in langs:
-            with open("resources/lexeme_to_synsets/lexeme2synsets.reliable_sources.{}.txt".format(lang)) as lines:
-                for line in lines:
-                    fields = line.strip().lower().split("\t")
-                    if len(fields) < 2:
-                        continue
-                    lemmapos = fields[0]
-                    synsets = fields[1:]
-                    old_synsets = lemmapos2gold.get(lemmapos, set())
-                    old_synsets.update(synsets)
-                    lemmapos2gold[lemmapos] = old_synsets
-        return Lemma2Synsets(data=lemmapos2gold)
-
-    @staticmethod
-    def sensekey_from_wn_sense_index():
-        lemmapos2gold = dict()
-        data_config = load_data_config()
-        with open(data_config["wordnet_path"]) as lines:
-            for line in lines:
-                fields = line.strip().split(" ")
-                key = fields[0]
-                pos = get_pos_from_key(key)
-                lexeme = key.split("%")[0] + "#" + pos
-                golds = lemmapos2gold.get(lexeme, set())
-                golds.add(key)
-                lemmapos2gold[lexeme] = golds
-        return Lemma2Synsets(data=lemmapos2gold)
-

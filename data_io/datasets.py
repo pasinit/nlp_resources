@@ -8,8 +8,6 @@ from allennlp.data.dataset_readers.dataset_reader import _LazyInstances
 from allennlp.data.fields import TextField, MetadataField, ArrayField
 from torchtext.vocab import Vocab
 
-from config.nlp_resources_config import load_data_config
-from data_io.data_utils import Lemma2Synsets, load_bn_key2id_map, load_wn_key2id_map
 import logging
 import os
 import re
@@ -17,8 +15,6 @@ from allennlp.data.tokenizers import Token
 import numpy as np
 from lxml import etree
 
-from data_io.mapping_utils import get_wnoffset2bnoffset, get_wnoffset2wnkeys, get_wnkeys2bnoffset, \
-    get_bnoffset2wnoffset, get_wnkeys2wnoffset, get_bnoffset2wnkeys
 from nlp_utils.utils import get_simplified_pos, get_pos_from_key
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -36,60 +32,6 @@ class LabelVocabulary(Vocab):
 
     def get_idx(self, token):
         return self[token]
-
-    @classmethod
-    def vocabulary_from_gold_key_file(cls, gold_key, key2wnid_path=None, key2bnid_path=None):
-        key2id = None
-        if key2bnid_path:
-            key2id = load_bn_key2id_map(key2bnid_path)
-        elif key2wnid_path:
-            key2id = load_wn_key2id_map(key2wnid_path)
-        labels = Counter()
-        with open(gold_key) as lines:
-            for line in lines:
-                fields = line.strip().split(" ")
-                golds = [x.replace("%5", "%3") for x in fields[1:]]
-                if key2id is not None:
-                    golds = [key2id[g] for g in golds]
-                labels.update(golds)
-        return LabelVocabulary(labels, specials=["<pad>", "<unk>"])
-
-    @classmethod
-    def wnoffset_vocabulary(cls):
-        offsets = list()
-        data_config = load_data_config()
-        with open(data_config["wordnet_path"]) as lines:
-            for line in lines:
-                fields = line.strip().split(" ")
-                key = fields[0]
-                pos = get_pos_from_key(key)
-                offset = "wn:" + fields[1] + pos
-                offsets.append(offset)
-        return LabelVocabulary(Counter(sorted(offsets)), specials=["<pad>", "<unk>"])
-
-    @classmethod
-    def bnoffset_vocabulary(cls):
-        # with open("resources/vocabularies/bn_vocabulary.txt") as lines:
-        #     bnoffsets = [line.strip() for line in lines]
-        wn2bn = get_wnoffset2bnoffset()
-        offsets = set()
-        data_config = load_data_config()
-        with open(data_config["wordnet_path"]) as lines:
-            for line in lines:
-                fields = line.strip().split(" ")
-                key = fields[0]
-                pos = get_pos_from_key(key)
-                offset = "wn:" + fields[1] + pos
-                bnoffset = wn2bn[offset]
-                offsets.update(bnoffset)
-        return LabelVocabulary(Counter(sorted(offsets)), specials=["<pad>", "<unk>"])
-
-    @classmethod
-    def wn_sensekey_vocabulary(cls):
-        data_config = load_data_config()
-        with open(data_config["wordnet_path"]) as lines:
-            keys = [line.strip().split(" ")[0].replace("%5", "%3") for line in lines]
-        return LabelVocabulary(Counter(sorted(keys)), specials=["<pad>", "<unk>"])
 
 
 @DatasetReader.register("wsd_xml")
@@ -114,7 +56,7 @@ class AllenWSDDatasetReader(DatasetReader):
         self.sliding_window_size = sliding_window_size
         self.start = 0
 
-    def read(self, file_path: Union[str, List]) -> Iterable[Instance]:
+    def read(self, file_path: Union[str, List], label_mapper_getter:Callable=None) -> Iterable[Instance]:
         """
         Returns an ``Iterable`` containing all the instances
         in the specified dataset.
@@ -144,7 +86,7 @@ class AllenWSDDatasetReader(DatasetReader):
             cache_file = None
 
         if lazy:
-            return _LazyInstances(lambda: self._read(file_path),
+            return _LazyInstances(lambda: self._read(file_path, label_mapper_getter=label_mapper_getter),
                                   cache_file,
                                   self.deserialize_instance,
                                   self.serialize_instance)
@@ -153,7 +95,7 @@ class AllenWSDDatasetReader(DatasetReader):
             if cache_file and os.path.exists(cache_file):
                 instances = self._instances_from_cache_file(cache_file)
             else:
-                instances = self._read(file_path)
+                instances = self._read(file_path, label_mapper_getter=label_mapper_getter)
 
             # Then some validation.
             if not isinstance(instances, list):
@@ -170,13 +112,13 @@ class AllenWSDDatasetReader(DatasetReader):
 
             return instances
 
-    def _read(self, file_paths: Union[str, List]) -> Iterable[Instance]:
+    def _read(self, file_paths: Union[str, List], label_mapper_getter:Callable=None) -> Iterable[Instance]:
         self.start = 0
         if type(file_paths) != list:
             file_paths = [file_paths]
         for i, file_path in enumerate(file_paths):
             gold_file = file_path.replace(".data.xml", ".gold.key.txt")
-            tokid2gold = self.load_gold_file(gold_file)
+            tokid2gold = self.load_gold_file(gold_file, label_mapper_getter)
             yield from self.load_xml(tokid2gold, file_path, file_path.split("/")[-1].replace(".data.xml", ""))
 
     def get_goldid_by_key(self, key):
@@ -196,19 +138,19 @@ class AllenWSDDatasetReader(DatasetReader):
     #     if goldid is None:
     #         goldid = self.key2goldid.get(key.replace("%3", "%5"), None)
     #     return goldid
-    def load_key2goldid(self, golds):
-        aux = AllenWSDDatasetReader.get_label_mapper(self.sense_inventory, set(golds))
-        return aux if aux is not None else {}
+    # def load_key2goldid(self, golds):
+    #     aux = AllenWSDDatasetReader.get_label_mapper(self.sense_inventory, set(golds))
+    #     return aux if aux is not None else {}
 
-    def load_gold_file(self, gold_file):
+    def load_gold_file(self, gold_file, label_mapper_getter):
         key2gold = dict()
         with open(gold_file) as lines:
             for line in lines:
                 fields = re.split("\s", line.strip())
                 key, *gold = fields
                 if self.key2goldid is None:
-                    self.key2goldid = self.load_key2goldid(gold)
-                if len(self.key2goldid) > 0:
+                    self.key2goldid = label_mapper_getter(self.sense_inventory, gold)#self.load_key2goldid(gold)
+                if self.key2goldid is not None and len(self.key2goldid) > 0:
                     gold = [self.get_goldid_by_key(g) for g in gold]
                     gold = [x for y in gold for x in y]
                 else:
@@ -338,143 +280,3 @@ class AllenWSDDatasetReader(DatasetReader):
         fields["possible_labels"] = possible_labels_field
 
         return Instance(fields)
-
-    @staticmethod
-    def get_label_mapper(target_inventory, labels):
-        label_types = set(
-            ["wnoffsets" if l.startswith("wn:") else "bnoffsets" if l.startswith("bn:") else "sensekeys" for l in labels
-             if l != "<pad>" and l != "<unk>"])
-        if target_inventory in label_types:
-            label_types.remove(target_inventory)
-        if len(label_types) > 1:
-            raise RuntimeError(
-                "cannot handle the mapping from 2 or more label types ({}) to the target inventory {}".format(
-                    ",".join(label_types), target_inventory))
-        if len(label_types) == 0:
-            return None
-        label_type = next(iter(label_types))
-        if label_type == "wnoffsets":
-            if target_inventory == "bnoffsets":
-                return get_wnoffset2bnoffset()
-            elif target_inventory == "sensekeys":
-                return get_wnoffset2wnkeys()
-            return None
-        elif label_type == "sensekeys" is not None:
-            if target_inventory == "bnoffsets":
-                return get_wnkeys2bnoffset()
-            elif target_inventory == "wnoffsets":
-                return get_wnkeys2wnoffset()
-            else:
-                return None
-        else:
-            if target_inventory == "wnoffsets":
-                return get_bnoffset2wnoffset()
-            elif target_inventory == "sensekeys":
-                return get_bnoffset2wnkeys()
-            else:
-                raise RuntimeError("Cannot infer label type from {}".format(label_type))
-
-    @staticmethod
-    def get_dataset_with_labels_from_data(indexers: Dict[str, Any], training_data_xmls, sliding_window=32,
-                                          max_sentence_token=64, gold_id_separator=" ", sense_inventory="babelnet",
-                                          mfs_file=None,
-                                          **kwargs):
-        labels = set()
-        lemma2synsetslist = list()
-        for xml_path in training_data_xmls:
-            gold_path = xml_path.replace("data.xml", "gold.key.txt")
-            lemma2synsetslist.append(Lemma2Synsets.from_corpus_xml(xml_path))
-            vocab = LabelVocabulary.vocabulary_from_gold_key_file(gold_path)
-            labels.update(vocab.stoi.keys())
-        key_mapper = AllenWSDDatasetReader.get_label_mapper(sense_inventory, labels)
-        labels = list([list(key_mapper.get(x, {x}))[0] if key_mapper is not None else x for x in labels])
-        labels = sorted(labels)
-        label_vocab = LabelVocabulary(Counter(labels), specials=["<pad>", "<unk>"])
-        lemma2classes = dict()
-        for l2s in lemma2synsetslist:
-            for lemma, synsets in l2s.items():
-                all_classes = lemma2classes.get(lemma, set())
-                all_classes.update(
-                    [label_vocab.get_idx(y) for x in synsets for y in (key_mapper.get(x, [x]) if key_mapper else [x])])
-                lemma2classes[lemma] = all_classes
-        lemma2classes = Lemma2Synsets(data=lemma2classes)
-        return AllenWSDDatasetReader.get_dataset(indexers, sliding_window, max_sentence_token, gold_id_separator,
-                                                 label_vocab, lemma2classes, mfs_file, sense_inventory, **kwargs)
-
-    @staticmethod
-    def get_mfs_vocab(mfs_file):
-        if mfs_file is None:
-            return None
-        mfs = dict()
-        with open(mfs_file) as lines:
-            for line in lines:
-                fields = line.strip().lower().split("\t")
-                if len(fields) < 2:
-                    continue
-                mfs[fields[0].lower()] = fields[1].replace("%5", "%3")
-        return mfs
-
-    @staticmethod
-    def get_dataset(indexers: Dict[str, Any], sliding_window, max_sentence_token, gold_id_separator,
-                    label_vocab, lemma2synsets, mfs_file, sense_inventory, **kwargs):
-        reader = AllenWSDDatasetReader(sense_inventory, None, indexers, label_vocab=label_vocab,
-                                       lemma2synsets=lemma2synsets,
-                                       max_sentence_len=max_sentence_token,
-                                       sliding_window_size=sliding_window,
-                                       # key2goldid=gold_mapper,
-                                       gold_key_id_separator=gold_id_separator, **kwargs)
-        if label_vocab is None:
-            label_vocab = reader.label_vocab
-        mfs_vocab = AllenWSDDatasetReader.get_mfs_vocab(mfs_file)
-        return reader, lemma2synsets, label_vocab, mfs_vocab
-
-    @staticmethod
-    def get_wnoffsets_dataset(indexers: Dict[str, Any], sliding_window=32, max_sentence_token=64,
-                              gold_id_separator=" ", langs=None, mfs_file=None,
-                              **kwargs):
-        # if langs is not None:
-        #     logger.warning("the argument langs: {} is ignored by this method.".format(",".join(langs)))
-        label_vocab = LabelVocabulary.wnoffset_vocabulary()
-        lemma2synsets = Lemma2Synsets.offsets_from_wn_sense_index()
-        if langs is not None:
-            if "en" in langs:
-                langs.remove("en")
-            if len(langs) > 0:
-                bn2wn = get_bnoffset2wnoffset()
-                bnlemma2synsets = Lemma2Synsets.from_bn_mapping(langs, **kwargs)
-                for key, bns in bnlemma2synsets.items():
-                    wns = [x for y in bns for x in bn2wn[y]]
-                    if key in lemma2synsets:
-                        lemma2synsets[key].update(wns)
-                    else:
-                        lemma2synsets[key] = wns
-
-        for key, synsets in lemma2synsets.items():
-            lemma2synsets[key] = [label_vocab.get_idx(l) for l in synsets]
-        # key_mapper = AllenWSDDatasetReader.get_label_mapper("wnoffset", label_vocab.stoi.keys())
-        return AllenWSDDatasetReader.get_dataset(indexers, sliding_window, max_sentence_token, gold_id_separator,
-                                                 label_vocab, lemma2synsets, mfs_file, **kwargs)
-
-    @staticmethod
-    def get_bnoffsets_dataset(indexers: Dict[str, Any], sliding_window=32, max_sentence_token=64,
-                              gold_id_separator=" ", langs=("en"), mfs_file=None, **kwargs):
-        lemma2synsets = Lemma2Synsets.from_bn_mapping(langs, **kwargs)
-        label_vocab = LabelVocabulary.bnoffset_vocabulary()
-        for key, synsets in lemma2synsets.items():
-            lemma2synsets[key] = [label_vocab.get_idx(l) for l in synsets]
-        # key_mapper = AllenWSDDatasetReader.get_label_mapper("babelnet", label_vocab.stoi.keys())
-        return AllenWSDDatasetReader.get_dataset(indexers, sliding_window, max_sentence_token, gold_id_separator,
-                                                 label_vocab, lemma2synsets, mfs_file, **kwargs)
-
-    @staticmethod
-    def get_sensekey_dataset(indexers: Dict[str, Any], sliding_window=32, max_sentence_token=64, gold_id_separator=" ",
-                             langs=None, mfs_file=None, **kwargs):
-        if langs is not None:
-            logger.warning(
-                "[get_sensekey_dataset]: the argument langs: {} is ignored by this method.".format(",".join(langs)))
-        lemma2synsets = Lemma2Synsets.sensekey_from_wn_sense_index()
-        label_vocab = LabelVocabulary.wn_sensekey_vocabulary()
-        for key, synsets in lemma2synsets.items():
-            lemma2synsets[key] = [label_vocab.get_idx(l) for l in synsets]
-        return AllenWSDDatasetReader.get_dataset(indexers, sliding_window, max_sentence_token, gold_id_separator,
-                                                 label_vocab, lemma2synsets, mfs_file, **kwargs)
