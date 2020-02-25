@@ -156,6 +156,12 @@ def get_batcher(model_name, all_segments, token_type_ids, attention_mask, tokeni
                 seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2batchidx)
         while k < len(ids):  ## while We haven't covered all the tokens of the current sentence
             end_index = get_end_index(end_index, i_non_starting_segments, ids, k)
+            if k == end_index:
+                ## the next word is divided in a number of segments that is larger than the maximum number
+                ## of segments that can be fit in a batch element. We therefore raise an exception as we do not want to
+                ## split words across multiple batch elements.
+                raise RuntimeError("Found a token at position {} of ids {} which is split in too many subtokens (> {}) to be fit"
+                                   "into a batch element. Check your data or your parameter!".format(k, ids, token_limit))
             if seg2token is not None:
                 end_tok_idx, start_tok_idx = get_start_end_token_index(end_index, i_seg2tok, ids, k, t2s)
             ## pad and add each new entry

@@ -5,7 +5,7 @@ from transformers import PreTrainedTokenizer
 import torch
 
 def get_tokenizer_kwargs(model_name):
-    if model_name.startswith("gpt2") or model_name.startswith("roberta"):
+    if model_name.startswith("gpt2") or model_name.startswith("roberta") or model_name.startswith("xlm-roberta"):
         return {"add_prefix_space": True}
     return {}
 
@@ -13,7 +13,7 @@ def get_tokenizer_kwargs(model_name):
 def get_needed_start_end_sentence_tokens(model_name, tokeniser: PreTrainedTokenizer):
     if model_name.startswith("bert") or model_name.startswith("distlbert"):
         return tokeniser.cls_token, tokeniser.sep_token
-    elif model_name.startswith("roberta") or model_name.startswith("gpt2"):
+    elif model_name.startswith("roberta") or model_name.startswith("gpt2") or model_name.startswith("xlm-roberta"):
         return tokeniser.bos_token, tokeniser.eos_token
     elif model_name.startswith("xlm"):
         return tokeniser.bos_token, tokeniser.sep_token
