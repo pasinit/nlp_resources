@@ -16,6 +16,7 @@ from nlp_utils.huggingface_utils import get_model_kwargs
 
 
 class HuggingfaceModelNames(Enum):
+    BERT_LARGE_CASED = "bert-large-cased"
     XLM_ROBERTA_LARGE = "xlm-roberta-large"
     # XLM_MLM_100_1280 = "xlm-mlm-100-1280"
     ROBERTA_BASE = "roberta-base"
@@ -25,20 +26,21 @@ class HuggingfaceModelNames(Enum):
     BERT_BASE_UNCASED = "bert-base-uncased"
     # OPEN_AI_GPT2_large = "gpt2-large"
     # XLNET_LARGE_CASED = "xlnet-large-cased"
-    # ROBERTA_LARGE = "roberta-large"
+    ROBERTA_LARGE = "roberta-large"
     BERT_BASE_CASED = "bert-base-cased"
     BERT_BASE_MULTILINGUAL_UNCASED = "bert-base-multilingual-uncased"
     BERT_BASE_MULTILINGUAL_CASED = "bert-base-multilingual-cased"
-    BERT_BASE_CHINESE = "bert-base-chinese"
-    BERT_BASE_GERMAN_CASED = "bert-base-german-cased"
+    # BERT_BASE_CHINESE = "bert-base-chinese"
+    # BERT_BASE_GERMAN_CASED = "bert-base-german-cased"
     BERT_LARGE_UNCASED = "bert-large-uncased"
+
 
 
 class GenericHuggingfaceWrapper(Module):
     def __init__(self, model_name, device, eval_mode=True, token_limit=256):
         super().__init__()
         self.model_name = model_name
-        self.tokeniser: PreTrainedTokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.tokeniser: PreTrainedTokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
         self.model = AutoModel.from_pretrained(model_name)
         if eval_mode:
             self.model.eval()
@@ -103,17 +105,17 @@ class GenericHuggingfaceWrapper(Module):
             newidxs = oldidx2newidx[i]
             to_be_merged = batch[newidxs]
             tok2seg_to_be_merged = [batched_tok2seg[x] for x in newidxs]
-            seg_ids = [[y for y in x[1:] if y is not None and y != []] for x in tok2seg_to_be_merged]
+            seg_ids = [[y for y in x if y is not None and y != []] for x in tok2seg_to_be_merged]
             tok2seg.append(sum(seg_ids, []))
             u_to_be_merged = to_be_merged.unbind()
             new_to_be_merged = list()
             for j in range(len(seg_ids)):
                 j_seg_ids = list(range(1, len([x + 1 for y in seg_ids[j] for x in y if x is not None and x != []]) + 1))
                 if j >= len(u_to_be_merged):
-                    print("WARNING: {} out of renge of u_to_be_merged. Skipping the rest.")
+                    print("WARNING: {} out of range of u_to_be_merged. Skipping the rest.")
                     return None, None
                 if any(x >= len(u_to_be_merged[j]) for x in j_seg_ids):
-                    print("WARNING: {} out of renge of u_to_be_merged. Skipping the rest.")
+                    print("WARNING: {} out of range of u_to_be_merged. Skipping the rest.")
                     return None, None
                 j_u_to_be_merged = u_to_be_merged[j][j_seg_ids]
                 new_to_be_merged.append(j_u_to_be_merged)
@@ -188,7 +190,7 @@ class GenericHuggingfaceWrapper(Module):
             t2s_i: List[List[int]] = tok2seg[i]
             merged_hs_i = list()
             for seg_ids in t2s_i:
-                hidden_segs = hs_i[np.array(seg_ids)]
+                hidden_segs = hs_i[np.array(seg_ids)-1]
                 if merge_mode == MergeMode.AVG:
                     merged = torch.mean(hidden_segs, 0)
                 elif merge_mode == MergeMode.SUM:

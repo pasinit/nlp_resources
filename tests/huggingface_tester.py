@@ -60,17 +60,14 @@ class HuggingfaceTester(TestCase):
         test_s2 = "Guidance has a functional interface with the Federation memory bank ."
         test_s3 = "Our clan left my uncle and his wife by the river bank to have their honeymoon ."
 
-        vanilla_tokeniser = AutoTokenizer.from_pretrained(model_name)
+        vanilla_tokeniser = AutoTokenizer.from_pretrained(model_name, use_fast=False)
         kwargs = get_tokenizer_kwargs(model_name)
-        vanilla_model = AutoModel.from_pretrained(model_name)
+        vanilla_model = AutoModel.from_pretrained(model_name).eval()
         start, end = get_needed_start_end_sentence_tokens(model_name, vanilla_tokeniser)
 
-        test_s1_b = vanilla_tokeniser.tokenize(
-            ((start + " ") if start else "") + test_s1 + ((" " + end) if end else ""), **kwargs)
-        test_s2_b = vanilla_tokeniser.tokenize(
-            ((start + " ") if start else "") + test_s2 + ((" " + end) if end else ""), **kwargs)
-        test_s3_b = vanilla_tokeniser.tokenize(
-            ((start + " ") if start else "") + test_s3 + ((" " + end) if end else ""), **kwargs)
+        test_s1_b = vanilla_tokeniser.tokenize(test_s1, **kwargs)
+        test_s2_b = vanilla_tokeniser.tokenize(test_s2, **kwargs)
+        test_s3_b = vanilla_tokeniser.tokenize(test_s3, **kwargs)
         tokeniser_kwargs = get_tokenizer_kwargs(model_name)
         test_s1_tok = vanilla_tokeniser.encode(test_s1_b, **tokeniser_kwargs)
         test_s2_tok = vanilla_tokeniser.encode(test_s2_b, **tokeniser_kwargs)
@@ -84,18 +81,18 @@ class HuggingfaceTester(TestCase):
         kwargs = get_model_kwargs(model_name, "cpu", {}, [0]*len(test_s3_tok), [1] * len(test_s3_tok))
         vanilla_out_3 = vanilla_model(torch.LongTensor(test_s3_tok).unsqueeze(0), **kwargs)[0]
         # token_type_ids=torch.LongTensor(token_type_ids_s3).unsqueeze(0))[0]
-        index1 = test_s1_b.index("bank") if "bank" in test_s1_b else test_s1_b.index(
-            "Ġbank") if "Ġbank" in test_s1_b else test_s1_b.index("bank</w>")if "bank</w>" in test_s1_b else test_s1_b.index("▁bank")
-        index2 = test_s2_b.index("bank") if "bank" in test_s2_b else test_s2_b.index(
-            "Ġbank") if "Ġbank" in test_s2_b  else test_s2_b.index("bank</w>")if "bank</w>" in test_s2_b else test_s2_b.index("▁bank")
-        index3 = test_s3_b.index("bank") if "bank" in test_s3_b else test_s3_b.index(
-            "Ġbank") if "Ġbank" in test_s3_b else test_s3_b.index("bank</w>")if "bank</w>" in test_s3_b else  test_s3_b.index("▁bank")
+        index1 = (test_s1_b.index("bank") if "bank" in test_s1_b else test_s1_b.index(
+            "Ġbank") if "Ġbank" in test_s1_b else test_s1_b.index("bank</w>")if "bank</w>" in test_s1_b else test_s1_b.index("▁bank")) + 1
+        index2 = (test_s2_b.index("bank") if "bank" in test_s2_b else test_s2_b.index(
+            "Ġbank") if "Ġbank" in test_s2_b  else test_s2_b.index("bank</w>")if "bank</w>" in test_s2_b else test_s2_b.index("▁bank")) + 1
+        index3 = (test_s3_b.index("bank") if "bank" in test_s3_b else test_s3_b.index(
+            "Ġbank") if "Ġbank" in test_s3_b else test_s3_b.index("bank</w>")if "bank</w>" in test_s3_b else  test_s3_b.index("▁bank")) + 1
 
         vanilla_bank_1 = vanilla_out_1[0][index1]
         vanilla_bank_2 = vanilla_out_2[0][index2]
         vanilla_bank_3 = vanilla_out_3[0][index3]
 
-        hf_model = GenericHuggingfaceWrapper(model_name, "cpu", token_limit=100)
+        hf_model = GenericHuggingfaceWrapper(model_name, "cpu", token_limit=100).eval()
         with torch.no_grad():
             outputs, bert_in = hf_model.sentences_forward(np.array([test_s1.split(), test_s2.split(), test_s3.split()]))
         hidden_states = outputs["hidden_states"]

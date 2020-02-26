@@ -61,17 +61,23 @@ def encode_word_pieces(tokeniser: PreTrainedTokenizer, sentences: np.ndarray, to
         seg_counter = 0
         for tok, label in zip(sent_tokens[:token_limit if token_limit > 0 else len(sent_tokens)], i_labels):
             segments = tokeniser.tokenize(tok, **get_tokenizer_kwargs(model_name))
-            mask = [True] * len(segments)
+            # mask = [True] * len(segments)
             start_idx_seg = len(segs)
             segs.extend(segments)
-            loc_attention.extend(mask)
+            # loc_attention.extend(mask)
             segment_types.extend([curr_id] * len(segments))
             tok2seg.append(list(range(start_idx_seg, start_idx_seg + len(segments))))
             seg_counter += len(segments)
-        all_segment_ids.append(tokeniser.encode(segs))
+        ids = tokeniser.encode(segs)
+        if len(ids) > len(segs):
+            for i in range(len(tok2seg)):
+                i_tok2seg = tok2seg[i]
+                for j in range(len(i_tok2seg)):
+                    i_tok2seg[j] += 1
+        all_segment_ids.append(ids)
         all_tok2seg.append(tok2seg)
         all_segment_str.append(segs)
-        attention_mask.append(loc_attention)
+        attention_mask.append([1]*len(ids))
         all_segment_types.append(segment_types)
 
     return all_segment_str, all_segment_ids, all_segment_types, attention_mask, all_tok2seg

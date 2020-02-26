@@ -38,14 +38,14 @@ def __clean_lists(seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2b
 
 def __pad_and_add(model_name, token_limit, ids, types, mask, tok2seg, seg_batch, type_ids_batch, mask_batch,
                   tok2seg_batch, tokeniser):
-    start, end = get_needed_start_end_sentence_tokens(model_name, tokeniser)
+    start, end = None, None #get_needed_start_end_sentence_tokens(model_name, tokeniser)
     pad_value = tokeniser.pad_token_id if "pad_token" in tokeniser.special_tokens_map is not None else tokeniser.eos_token_id if "eos_token_id" in tokeniser.special_tokens_map else tokeniser.unk_token_id
     ids = __get_batched_elem(token_limit, ids, tokeniser.encode(start)[0] if start else None,
                              tokeniser.encode(end)[0] if end else None, pad_value)
     types = __get_batched_elem(token_limit, types, 0 if start else None, 0 if end else None, 0)
     mask = __get_batched_elem(token_limit, mask, 1 if start else None, 1 if end else None, 0)
     if tok2seg is not None:
-        tok2seg = __get_batched_elem(token_limit, tok2seg, [], [], [])
+        tok2seg = __get_batched_elem(token_limit, tok2seg, [] if start else None, [] if end else None, [])
 
     seg_batch.append(ids)
     type_ids_batch.append(types)
