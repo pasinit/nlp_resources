@@ -169,7 +169,7 @@ class GenericHuggingfaceWrapper(Module):
         #        "bert_in": }
         # hidden_states, pooled_output = zip(*hidden_states)
 
-        return {"hidden_states": torch.stack(hidden_states, 0).to(self.device)}, \
+        return {"hidden_states": hidden_states}, \
                {"str_tokens": sentences, "ids": all_segments, "token_type_ids": token_type_ids,
                 "attention_mask": attention_mask}
 

@@ -32,7 +32,6 @@ def __clean_lists(seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2b
     type_ids_batch = list()
     mask_batch = list()
     segidx2batchidx = list()
-    segidx2batchidx.append([])
     return seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2batchidx
 
 
@@ -146,7 +145,7 @@ def get_batcher(model_name, all_segments, token_type_ids, attention_mask, tokeni
                               t2s, tok2seg_batch, type_ids_batch, types, device):
         segidx2batchidx.append([])
         end_index = 0
-        k = 0
+        k = 1
         if len(seg_batch) + math.ceil(len(ids) / (token_limit - 2)) > batch_size:
             ## if I have to split a sentence into two different batches then yield this batch and start
             ## a new one
