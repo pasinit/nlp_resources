@@ -37,10 +37,10 @@ def __clean_lists(seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2b
 
 def __pad_and_add(model_name, token_limit, ids, types, mask, tok2seg, seg_batch, type_ids_batch, mask_batch,
                   tok2seg_batch, tokeniser):
-    start, end = None, None #get_needed_start_end_sentence_tokens(model_name, tokeniser)
+    start, end = get_needed_start_end_sentence_tokens(model_name, tokeniser)
     pad_value = tokeniser.pad_token_id if "pad_token" in tokeniser.special_tokens_map is not None else tokeniser.eos_token_id if "eos_token_id" in tokeniser.special_tokens_map else tokeniser.unk_token_id
-    ids = __get_batched_elem(token_limit, ids, tokeniser.encode(start)[0] if start else None,
-                             tokeniser.encode(end)[0] if end else None, pad_value)
+    ids = __get_batched_elem(token_limit, ids, tokeniser.encode(start, add_special_tokens=False)[0] if start else None,
+                             tokeniser.encode(end, add_special_tokens=False)[0] if end else None, pad_value)
     types = __get_batched_elem(token_limit, types, 0 if start else None, 0 if end else None, 0)
     mask = __get_batched_elem(token_limit, mask, 1 if start else None, 1 if end else None, 0)
     if tok2seg is not None:
@@ -54,6 +54,8 @@ def __pad_and_add(model_name, token_limit, ids, types, mask, tok2seg, seg_batch,
 
 
 def __get_data_to_yield(seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2batchidx, device="cuda"):
+    if len(segidx2batchidx[-1]) == 0:
+        segidx2batchidx = segidx2batchidx[:-1]
     return {"seg": torch.LongTensor(seg_batch).to(device), "type": torch.LongTensor(type_ids_batch).to(device),
             "mask": torch.LongTensor(mask_batch).to(device),
             "tok2seg": tok2seg_batch, "segid2batchidx": segidx2batchidx}
@@ -145,7 +147,8 @@ def get_batcher(model_name, all_segments, token_type_ids, attention_mask, tokeni
                               t2s, tok2seg_batch, type_ids_batch, types, device):
         segidx2batchidx.append([])
         end_index = 0
-        k = 1
+        k = 0
+        # k_limit = max(i_seg2tok.values())
         if len(seg_batch) + math.ceil(len(ids) / (token_limit - 2)) > batch_size:
             ## if I have to split a sentence into two different batches then yield this batch and start
             ## a new one
@@ -153,14 +156,18 @@ def get_batcher(model_name, all_segments, token_type_ids, attention_mask, tokeni
                                       segidx2batchidx, device)
             seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2batchidx = __clean_lists(
                 seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2batchidx)
-        while k < len(ids):  ## while We haven't covered all the tokens of the current sentence
+
+        while k < len(
+                ids):  ## while We haven't covered all the segments of the current sentence (not considering CLS e SEP)
             end_index = get_end_index(end_index, i_non_starting_segments, ids, k)
             if k == end_index:
                 ## the next word is divided in a number of segments that is larger than the maximum number
                 ## of segments that can be fit in a batch element. We therefore raise an exception as we do not want to
                 ## split words across multiple batch elements.
-                raise RuntimeError("Found a token that start at position {} which is split in too many subtokens (> {}) to be fit"
-                                   " into a batch element. Check your data or your parameter!\n Here it is the list of segments {}".format(k, token_limit, ids))
+                raise RuntimeError(
+                    "Found a token that start at position {} which is split in too many subtokens (> {}) to be fit"
+                    " into a batch element. Check your data or your parameter!\n Here it is the list of segments {}".format(
+                        k, token_limit, ids))
             if seg2token is not None:
                 end_tok_idx, start_tok_idx = get_start_end_token_index(end_index, i_seg2tok, ids, k, t2s)
             ## pad and add each new entry
@@ -168,6 +175,8 @@ def get_batcher(model_name, all_segments, token_type_ids, attention_mask, tokeni
                           t2s[start_tok_idx:end_tok_idx] if seg2token is not None else None,
                           seg_batch, type_ids_batch, mask_batch,
                           tok2seg_batch, tokeniser)
+            if len(segidx2batchidx) == 0:
+                segidx2batchidx.append([])
             segidx2batchidx[-1].append(len(seg_batch) - 1)
             ## if during the splitting we reached the maximum batch size then yield the batch
             ## and continue to process the sentence.
@@ -176,6 +185,7 @@ def get_batcher(model_name, all_segments, token_type_ids, attention_mask, tokeni
                                           segidx2batchidx, device)
                 seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2batchidx = __clean_lists(
                     seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2batchidx)
+
             k = end_index
         ## when the sentence has been processed in full then return the last built batch to continue its
         ## construction
@@ -195,8 +205,8 @@ def get_batcher(model_name, all_segments, token_type_ids, attention_mask, tokeni
     def get_start_end_token_index(end_index, i_seg2tok, ids, k, t2s):
         start_tok_idx = i_seg2tok[k]
         end_tok_idx = i_seg2tok[end_index if end_index < len(ids) else end_index - 1]
-        if end_tok_idx == len(t2s) - 1:
-            end_tok_idx += 1
+        # if end_tok_idx == len(t2s) - 1:
+        #     end_tok_idx += 1
         return end_tok_idx, start_tok_idx
 
     def get_end_index(end_index, i_non_starting_segments, ids, k):

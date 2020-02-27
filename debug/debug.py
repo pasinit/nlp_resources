@@ -10,7 +10,11 @@ for sentence_xml in root.findall("text/sentence"):
         sentence.append(token.text)
     all_sentences.append(sentence)
 
-all_sentences = all_sentences[:100]
 
-hf_model = GenericHuggingfaceWrapper(HuggingfaceModelNames.XLM_ROBERTA_LARGE.value, "cuda", token_limit=200)
-hf_model.sentences_forward(np.array(all_sentences))
+for token_limit in [50, 100, 150, 200, 250, 300]:
+    print(token_limit)
+    hf_model = GenericHuggingfaceWrapper(HuggingfaceModelNames.XLM_ROBERTA_LARGE.value, "cuda", token_limit=token_limit)
+    hf_model.sentences_forward(np.array(all_sentences))
+    hf_model.cpu()
+    del hf_model
+

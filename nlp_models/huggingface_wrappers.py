@@ -3,6 +3,7 @@ from enum import Enum
 import torch
 from numpy.compat import contextlib_nullcontext
 from torch.nn import Module
+from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModel, PreTrainedTokenizer
 from typing import List
 
@@ -112,10 +113,10 @@ class GenericHuggingfaceWrapper(Module):
             for j in range(len(seg_ids)):
                 j_seg_ids = list(range(1, len([x + 1 for y in seg_ids[j] for x in y if x is not None and x != []]) + 1))
                 if j >= len(u_to_be_merged):
-                    print("WARNING: {} out of range of u_to_be_merged. Skipping the rest.")
+                    print("WARNING: {} out of range of u_to_be_merged. Skipping the rest.".format(j))
                     return None, None
                 if any(x >= len(u_to_be_merged[j]) for x in j_seg_ids):
-                    print("WARNING: {} out of range of u_to_be_merged. Skipping the rest.")
+                    print("WARNING: out of range in u_to_be_merged. Skipping the rest.")
                     return None, None
                 j_u_to_be_merged = u_to_be_merged[j][j_seg_ids]
                 new_to_be_merged.append(j_u_to_be_merged)
@@ -129,10 +130,11 @@ class GenericHuggingfaceWrapper(Module):
         model_out = self.model(segments, **kwargs)
         # token_type_ids=type_ids, attention_mask=mask, **kwargs)
         last_hidden_states = model_out[0]
+        last_hidden_states = last_hidden_states[:,1:,:]
         merged_batch, tok2seg = self.__merge_batch_back(last_hidden_states, tok2seg, oldidx2newidx)
         return self.__merge_hidden_states(merged_batch, tok2seg, merge_mode)
 
-    def sentences_forward(self, sentences: np.ndarray, **kwargs):
+    def sentences_forward(self, sentences: np.ndarray, print_bar=False, **kwargs):
         """
         :param sentences: list of already tokenised sentences, i.e., List[List[str]]
         :param kwargs: optional arguments to pass to bert model
@@ -151,14 +153,17 @@ class GenericHuggingfaceWrapper(Module):
                                      batch_size=kwargs.get("batch_size", None))
         hidden_states = list()
         with self.get_context():
-            for data in batch_iterator():
+            iterator = batch_iterator()
+            if print_bar:
+                iterator = tqdm(iterator)
+            for data in iterator:
                 segments, type_ids, mask, tok2seg, oldidx2newidx = [data[x] for x in
                                                                     ["seg", "type", "mask", "tok2seg",
                                                                      "segid2batchidx"]]
                 merged_hidden_states = self.word_forward(segments, type_ids, mask, tok2seg, oldidx2newidx, merge_mode,
                                                          **kwargs)
                 if merged_hidden_states is None:
-                    print("WARNING: skipping an entire batch of sentences!!!\n{}".format("\n".join(list(sentences))))
+                    print("WARNING: skipping an entire batch of sentences!!!")
                     return {"hidden_states": None}, \
                            {"str_tokens": sentences, "ids": all_segments, "token_type_ids": token_type_ids,
                             "attention_mask": attention_mask}

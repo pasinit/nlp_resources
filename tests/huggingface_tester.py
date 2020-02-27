@@ -62,7 +62,7 @@ class HuggingfaceTester(TestCase):
 
         vanilla_tokeniser = AutoTokenizer.from_pretrained(model_name, use_fast=False)
         kwargs = get_tokenizer_kwargs(model_name)
-        vanilla_model = AutoModel.from_pretrained(model_name).eval()
+        vanilla_model = AutoModel.from_pretrained(model_name).cuda().eval()
         start, end = get_needed_start_end_sentence_tokens(model_name, vanilla_tokeniser)
 
         test_s1_b = vanilla_tokeniser.tokenize(test_s1, **kwargs)
@@ -72,27 +72,30 @@ class HuggingfaceTester(TestCase):
         test_s1_tok = vanilla_tokeniser.encode(test_s1_b, **tokeniser_kwargs)
         test_s2_tok = vanilla_tokeniser.encode(test_s2_b, **tokeniser_kwargs)
         test_s3_tok = vanilla_tokeniser.encode(test_s3_b, **tokeniser_kwargs)
-        kwargs = get_model_kwargs(model_name, "cpu", {}, [0]*len(test_s1_tok), [1] * len(test_s1_tok))
-        vanilla_out_1 = vanilla_model(torch.LongTensor(test_s1_tok).unsqueeze(0), **kwargs)[0]
+        kwargs = get_model_kwargs(model_name, "cuda", {}, [0] * len(test_s1_tok), [1] * len(test_s1_tok))
+        vanilla_out_1 = vanilla_model(torch.LongTensor(test_s1_tok).unsqueeze(0).cuda(), **kwargs)[0]
         # token_type_ids=torch.LongTensor(token_type_ids_s1).unsqueeze(0))[0]
-        kwargs = get_model_kwargs(model_name, "cpu", {}, [0]*len(test_s2_tok), [1] * len(test_s2_tok))
-        vanilla_out_2 = vanilla_model(torch.LongTensor(test_s2_tok).unsqueeze(0), **kwargs)[0]
+        kwargs = get_model_kwargs(model_name, "cuda", {}, [0] * len(test_s2_tok), [1] * len(test_s2_tok))
+        vanilla_out_2 = vanilla_model(torch.LongTensor(test_s2_tok).unsqueeze(0).cuda(), **kwargs)[0]
         # token_type_ids=torch.LongTensor(token_type_ids_s2).unsqueeze(0))[0]
-        kwargs = get_model_kwargs(model_name, "cpu", {}, [0]*len(test_s3_tok), [1] * len(test_s3_tok))
-        vanilla_out_3 = vanilla_model(torch.LongTensor(test_s3_tok).unsqueeze(0), **kwargs)[0]
+        kwargs = get_model_kwargs(model_name, "cuda", {}, [0] * len(test_s3_tok), [1] * len(test_s3_tok))
+        vanilla_out_3 = vanilla_model(torch.LongTensor(test_s3_tok).unsqueeze(0).cuda(), **kwargs)[0]
         # token_type_ids=torch.LongTensor(token_type_ids_s3).unsqueeze(0))[0]
         index1 = (test_s1_b.index("bank") if "bank" in test_s1_b else test_s1_b.index(
-            "Ġbank") if "Ġbank" in test_s1_b else test_s1_b.index("bank</w>")if "bank</w>" in test_s1_b else test_s1_b.index("▁bank")) + 1
+            "Ġbank") if "Ġbank" in test_s1_b else test_s1_b.index(
+            "bank</w>") if "bank</w>" in test_s1_b else test_s1_b.index("▁bank")) + 1
         index2 = (test_s2_b.index("bank") if "bank" in test_s2_b else test_s2_b.index(
-            "Ġbank") if "Ġbank" in test_s2_b  else test_s2_b.index("bank</w>")if "bank</w>" in test_s2_b else test_s2_b.index("▁bank")) + 1
+            "Ġbank") if "Ġbank" in test_s2_b else test_s2_b.index(
+            "bank</w>") if "bank</w>" in test_s2_b else test_s2_b.index("▁bank")) + 1
         index3 = (test_s3_b.index("bank") if "bank" in test_s3_b else test_s3_b.index(
-            "Ġbank") if "Ġbank" in test_s3_b else test_s3_b.index("bank</w>")if "bank</w>" in test_s3_b else  test_s3_b.index("▁bank")) + 1
+            "Ġbank") if "Ġbank" in test_s3_b else test_s3_b.index(
+            "bank</w>") if "bank</w>" in test_s3_b else test_s3_b.index("▁bank")) + 1
 
         vanilla_bank_1 = vanilla_out_1[0][index1]
         vanilla_bank_2 = vanilla_out_2[0][index2]
         vanilla_bank_3 = vanilla_out_3[0][index3]
 
-        hf_model = GenericHuggingfaceWrapper(model_name, "cpu", token_limit=100).eval()
+        hf_model = GenericHuggingfaceWrapper(model_name, "cuda", token_limit=100).eval()
         with torch.no_grad():
             outputs, bert_in = hf_model.sentences_forward(np.array([test_s1.split(), test_s2.split(), test_s3.split()]))
         hidden_states = outputs["hidden_states"]
@@ -205,11 +208,34 @@ class HuggingfaceTester(TestCase):
     #     for i in tqdm(range(10)):
     #         out = bert(s)
 
+    def batching_test(self):
+        root = etree.parse(
+            "/home/tommaso/Documents/data/WSD_Evaluation_Framework/Evaluation_Datasets/senseval2/senseval2.data.xml").getroot()
 
-# if __name__ == "__main__":
-#     BertTester().test_bert_sentence_prediction_output()
+        all_sentences = list()
+        for sentence_xml in root.findall("text/sentence"):
+            sentence = list()
+            for token in sentence_xml:
+                sentence.append(token.text)
+            all_sentences.append(sentence)
+        for token_limit in [50, 100, 150, 200, 250, 300]:
+            print(token_limit)
+            hf_model = GenericHuggingfaceWrapper(HuggingfaceModelNames.XLM_ROBERTA_LARGE.value, "cuda",
+                                                 token_limit=token_limit)
+            hf_model.sentences_forward(np.array(all_sentences), print_bar=True)
+            hf_model.cpu()
+            del hf_model
+
+
+from lxml import etree
+
 if __name__ == '__main__':
     # BertTester().test_word_merging()
+    print("Batching stress-test")
+    HuggingfaceTester().batching_test()
+    print("Word merging test")
     HuggingfaceTester().test_huggingface_models_correctness_word_merging()
+
     # BertTester().test_memory_bert()
     # unittest.main()
+

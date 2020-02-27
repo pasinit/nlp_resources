@@ -11,7 +11,7 @@ def get_tokenizer_kwargs(model_name):
 
 
 def get_needed_start_end_sentence_tokens(model_name, tokeniser: PreTrainedTokenizer):
-    if model_name.startswith("bert") or model_name.startswith("distlbert"):
+    if model_name.startswith("bert") or model_name.startswith("distilbert"):
         return tokeniser.cls_token, tokeniser.sep_token
     elif model_name.startswith("roberta") or model_name.startswith("gpt2") or model_name.startswith("xlm-roberta"):
         return tokeniser.bos_token, tokeniser.eos_token
@@ -68,12 +68,12 @@ def encode_word_pieces(tokeniser: PreTrainedTokenizer, sentences: np.ndarray, to
             segment_types.extend([curr_id] * len(segments))
             tok2seg.append(list(range(start_idx_seg, start_idx_seg + len(segments))))
             seg_counter += len(segments)
-        ids = tokeniser.encode(segs)
-        if len(ids) > len(segs):
-            for i in range(len(tok2seg)):
-                i_tok2seg = tok2seg[i]
-                for j in range(len(i_tok2seg)):
-                    i_tok2seg[j] += 1
+        ids = tokeniser.encode(segs)[1:-1]
+        # if len(ids) > len(segs):
+        #     for i in range(len(tok2seg)):
+        #         i_tok2seg = tok2seg[i]
+        #         for j in range(len(i_tok2seg)):
+        #             i_tok2seg[j] += 1
         all_segment_ids.append(ids)
         all_tok2seg.append(tok2seg)
         all_segment_str.append(segs)
