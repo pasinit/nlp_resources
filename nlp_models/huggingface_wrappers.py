@@ -169,6 +169,7 @@ class GenericHuggingfaceWrapper(Module):
         #        "bert_in": }
         # hidden_states, pooled_output = zip(*hidden_states)
         parallel_hidden_states = list()
+        assert len(sentences) == len(hidden_states)
         for s,h in zip(sentences, hidden_states):
             assert torch.sum(h[len(s):,:]) == 0.0
             h = h[:len(s),:].to(self.device)
