@@ -168,8 +168,13 @@ class GenericHuggingfaceWrapper(Module):
         # {"out": hidden_states,
         #        "bert_in": }
         # hidden_states, pooled_output = zip(*hidden_states)
-
-        return {"hidden_states": hidden_states}, \
+        parallel_hidden_states = list()
+        for s,h in zip(sentences, hidden_states):
+            assert torch.sum(h[len(s):,:]) == 0.0
+            h = h[:len(s),:].to(self.device)
+            parallel_hidden_states.append(h)
+        del hidden_states
+        return {"hidden_states": parallel_hidden_states}, \
                {"str_tokens": sentences, "ids": all_segments, "token_type_ids": token_type_ids,
                 "attention_mask": attention_mask}
 
