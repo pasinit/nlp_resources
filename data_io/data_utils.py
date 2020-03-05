@@ -2,6 +2,7 @@ from typing import Dict
 
 from lxml import etree
 
+from data_io.datasets import WORDNET_DICT_PATH
 from nlp_utils.utils import get_pos_from_key, get_simplified_pos
 
 
@@ -90,4 +91,18 @@ class Lemma2Synsets(dict):
             lemmapos2gold[lemmapos].add(key2gold[tokenid].replace("%5", "%3"))
         for lemmapos, golds in lemmapos2gold.items():
             lemmapos2gold[lemmapos] = set(filter(lambda x: x is not None, [gold_transformer(g) for g in golds]))
+        return Lemma2Synsets(data=lemmapos2gold)
+
+    @staticmethod
+    def sensekeys_from_wordnet_dict():
+        lemmapos2gold = dict()
+        with open(WORDNET_DICT_PATH) as lines:
+            for line in lines:
+                fields = line.strip().split(" ")
+                key = fields[0]
+                pos = get_pos_from_key(key)
+                lexeme = key.split("%")[0] + "#" + pos
+                golds = lemmapos2gold.get(lexeme, set())
+                golds.add(key)
+                lemmapos2gold[lexeme] = golds
         return Lemma2Synsets(data=lemmapos2gold)

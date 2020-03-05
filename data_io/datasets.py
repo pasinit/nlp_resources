@@ -18,6 +18,25 @@ from lxml import etree
 from nlp_utils.utils import get_simplified_pos, get_pos_from_key
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
+WORDNET_DICT_PATH = "/opt/WordNet-3.0/dict/index.sense"
+
+
+def wnoffset_vocabulary():
+    offsets = list()
+    with open(WORDNET_DICT_PATH) as lines:
+        for line in lines:
+            fields = line.strip().split(" ")
+            key = fields[0]
+            pos = get_pos_from_key(key)
+            offset = "wn:" + fields[1] + pos
+            offsets.append(offset)
+    return LabelVocabulary(Counter(sorted(offsets)), specials=["<pad>", "<unk>"])
+
+
+def wn_sensekey_vocabulary():
+    with open(WORDNET_DICT_PATH) as lines:
+        keys = [line.strip().split(" ")[0].replace("%5", "%3") for line in lines]
+    return LabelVocabulary(Counter(sorted(keys)), specials=["<pad>", "<unk>"])
 
 
 class LabelVocabulary(Vocab):
@@ -39,24 +58,26 @@ class AllenWSDDatasetReader(DatasetReader):
     def __init__(self, sense_inventory, tokenizer: Callable[[str], List[str]] = lambda x: x.split(),
                  token_indexers: Dict[str, TokenIndexer] = None,
                  label_vocab: LabelVocabulary = None, lemma2synsets=None,
-                 # key2goldid: Dict[str, str] = None,
                  max_sentence_len: int = 64,
-                 sliding_window_size: int = 32, gold_key_id_separator=" ",
-                 lazy=False,
+                 sliding_window_size: int = 32,
+                 lazy=False, lowercase=False,
+                 replace_space=None,
                  **kwargs):
         super().__init__(lazy=lazy)
         assert token_indexers is not None and label_vocab is not None and lemma2synsets is not None
         self.tokenizer = tokenizer
+        self.lowercase = lowercase
         self.token_indexers = token_indexers
         self.label_vocab = label_vocab
         self.lemma2synsets = lemma2synsets
         self.key2goldid = None
         self.sense_inventory = sense_inventory
+        self.replace_space = replace_space
         self.max_sentence_len = max_sentence_len
         self.sliding_window_size = sliding_window_size
         self.start = 0
 
-    def read(self, file_path: Union[str, List], label_mapper_getter:Callable=None) -> Iterable[Instance]:
+    def read(self, file_path: Union[str, List], label_mapper_getter: Callable = None) -> Iterable[Instance]:
         """
         Returns an ``Iterable`` containing all the instances
         in the specified dataset.
@@ -112,7 +133,7 @@ class AllenWSDDatasetReader(DatasetReader):
 
             return instances
 
-    def _read(self, file_paths: Union[str, List], label_mapper_getter:Callable=None) -> Iterable[Instance]:
+    def _read(self, file_paths: Union[str, List], label_mapper_getter: Callable = None) -> Iterable[Instance]:
         self.start = 0
         if type(file_paths) != list:
             file_paths = [file_paths]
@@ -149,7 +170,7 @@ class AllenWSDDatasetReader(DatasetReader):
                 fields = re.split("\s", line.strip())
                 key, *gold = fields
                 if self.key2goldid is None:
-                    self.key2goldid = label_mapper_getter(self.sense_inventory, gold)#self.load_key2goldid(gold)
+                    self.key2goldid = label_mapper_getter(self.sense_inventory, gold)  # self.load_key2goldid(gold)
                 if self.key2goldid is not None and len(self.key2goldid) > 0:
                     gold = [self.get_goldid_by_key(g) for g in gold]
                     gold = [x for y in gold for x in y]
@@ -172,6 +193,10 @@ class AllenWSDDatasetReader(DatasetReader):
             for elem in sentence:
                 if elem.text is None:
                     continue
+                if self.lowercase:
+                    elem.text = elem.text.lower()
+                if self.replace_space is not None:
+                    elem.text = elem.text.replace(" ", self.replace_space)
                 words.append(Token(elem.text))
 
                 if elem.tag == "wf" or elem.attrib["id"] not in tokid2gold:

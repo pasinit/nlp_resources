@@ -4,7 +4,7 @@ import torch
 from numpy.compat import contextlib_nullcontext
 from torch.nn import Module
 from tqdm import tqdm
-from transformers import AutoTokenizer, AutoModel, PreTrainedTokenizer
+from transformers import AutoTokenizer, AutoModel, PreTrainedTokenizer, AutoConfig
 from typing import List
 
 from data_io.batchers import get_batcher
@@ -36,13 +36,13 @@ class HuggingfaceModelNames(Enum):
     BERT_LARGE_UNCASED = "bert-large-uncased"
 
 
-
 class GenericHuggingfaceWrapper(Module):
-    def __init__(self, model_name, device, eval_mode=True, token_limit=256):
+    def __init__(self, model_name, device, eval_mode=True, token_limit=256, **kwargs):
         super().__init__()
         self.model_name = model_name
         self.tokeniser: PreTrainedTokenizer = AutoTokenizer.from_pretrained(model_name, use_fast=False)
-        self.model = AutoModel.from_pretrained(model_name)
+        config = AutoConfig.from_pretrained(model_name, **kwargs)
+        self.model = AutoModel.from_pretrained(model_name, config=config)
         if eval_mode:
             self.model.eval()
         self.model.to(device)
@@ -125,12 +125,26 @@ class GenericHuggingfaceWrapper(Module):
         assert len(batch_merged) == len(oldidx2newidx)
         return batch_merged, tok2seg
 
-    def word_forward(self, segments, type_ids, mask, tok2seg, oldidx2newidx, merge_mode, **kwargs):
+    def aggregate_layers(self, tensor, function_name):
+        if function_name == "sum":
+            return torch.sum(tensor, 0).squeeze()
+        if function_name == "mean":
+            return torch.mean(tensor, 0).squeeze()
+        else:
+            raise RuntimeError("function {} not recognised! Choose between \"sum\" and \"mean\"")
+
+    def word_forward(self, segments, type_ids, mask, tok2seg, oldidx2newidx, merge_mode,
+                    aggregate_layers = None, layers_aggregation_function="sum", **kwargs):
         kwargs = get_model_kwargs(self.model_name, self.device, kwargs, type_ids, mask)
         model_out = self.model(segments, **kwargs)
         # token_type_ids=type_ids, attention_mask=mask, **kwargs)
-        last_hidden_states = model_out[0]
-        last_hidden_states = last_hidden_states[:,1:,:]
+        if aggregate_layers:
+            assert len(model_out) > 1
+            tensors_to_aggregate = torch.stack([model_out[-1][x] for x in aggregate_layers], 0)
+            hidden_states = self.aggregate_layers(tensors_to_aggregate, layers_aggregation_function)
+        else: hidden_states = model_out[0]
+
+        last_hidden_states = hidden_states[:, 1:, :]
         merged_batch, tok2seg = self.__merge_batch_back(last_hidden_states, tok2seg, oldidx2newidx)
         return self.__merge_hidden_states(merged_batch, tok2seg, merge_mode)
 
@@ -175,9 +189,9 @@ class GenericHuggingfaceWrapper(Module):
         # hidden_states, pooled_output = zip(*hidden_states)
         parallel_hidden_states = list()
         assert len(sentences) == len(hidden_states)
-        for s,h in zip(sentences, hidden_states):
-            assert torch.sum(h[len(s):,:]) == 0.0
-            h = h[:len(s),:].to(self.device)
+        for s, h in zip(sentences, hidden_states):
+            assert torch.sum(h[len(s):, :]) == 0.0
+            h = h[:len(s), :].to(self.device)
             parallel_hidden_states.append(h)
         del hidden_states
         return {"hidden_states": parallel_hidden_states}, \
@@ -201,7 +215,7 @@ class GenericHuggingfaceWrapper(Module):
             t2s_i: List[List[int]] = tok2seg[i]
             merged_hs_i = list()
             for seg_ids in t2s_i:
-                hidden_segs = hs_i[np.array(seg_ids)-1]
+                hidden_segs = hs_i[np.array(seg_ids) - 1]
                 if merge_mode == MergeMode.AVG:
                     merged = torch.mean(hidden_segs, 0)
                 elif merge_mode == MergeMode.SUM:

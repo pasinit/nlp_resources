@@ -226,16 +226,37 @@ class HuggingfaceTester(TestCase):
             hf_model.cpu()
             del hf_model
 
+    def layer_aggregation_test(self):
+        root = etree.parse(
+            "/home/tommaso/Documents/data/WSD_Evaluation_Framework/Evaluation_Datasets/senseval2/senseval2.data.xml").getroot()
+
+        all_sentences = list()
+        for sentence_xml in root.findall("text/sentence"):
+            sentence = list()
+            for token in sentence_xml:
+                sentence.append(token.text)
+            all_sentences.append(sentence)
+        token_limit = 100
+        hf_model = GenericHuggingfaceWrapper(HuggingfaceModelNames.XLM_ROBERTA_LARGE.value, "cuda",
+                                             token_limit=token_limit,  output_hidden_states=True)
+
+        output = hf_model.sentences_forward(np.array(all_sentences), print_bar=True, aggregate_layers=[-1, -2, -3, -4],
+                                   layers_aggregation_function="sum")
+        print()
+
 
 from lxml import etree
-
+import sys
 if __name__ == '__main__':
     # BertTester().test_word_merging()
+    print("Layer aggregation test")
+    HuggingfaceTester().layer_aggregation_test()
+    sys.exit()
     print("Batching stress-test")
     HuggingfaceTester().batching_test()
     print("Word merging test")
     HuggingfaceTester().test_huggingface_models_correctness_word_merging()
 
+
     # BertTester().test_memory_bert()
     # unittest.main()
-
