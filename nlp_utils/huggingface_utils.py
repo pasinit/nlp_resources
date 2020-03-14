@@ -13,7 +13,7 @@ def get_tokenizer_kwargs(model_name):
 def get_needed_start_end_sentence_tokens(model_name, tokeniser: PreTrainedTokenizer):
     if model_name.startswith("bert") or model_name.startswith("distilbert"):
         return tokeniser.cls_token, tokeniser.sep_token
-    elif model_name.startswith("roberta") or model_name.startswith("gpt2") or model_name.startswith("xlm-roberta"):
+    elif model_name.startswith("roberta") or model_name.startswith("xlm-roberta"):
         return tokeniser.bos_token, tokeniser.eos_token
     elif model_name.startswith("xlm"):
         return tokeniser.bos_token, tokeniser.sep_token
@@ -43,6 +43,8 @@ def get_word_hidden_states(hidden_states, mapping):
 
 def encode_word_pieces(tokeniser: PreTrainedTokenizer, sentences: np.ndarray, token_limit, model_name) -> \
         Tuple[List[List[str]], List[List[int]], List[List[int]], List[List[bool]], List[List[List[int]]]]:
+    tokeniser_kwargs = get_tokenizer_kwargs(model_name)
+
     all_tok2seg = list()
     all_segment_str: List[List[str]] = list()
     all_segment_ids: List[List[int]] = list()
@@ -68,8 +70,9 @@ def encode_word_pieces(tokeniser: PreTrainedTokenizer, sentences: np.ndarray, to
             segment_types.extend([curr_id] * len(segments))
             tok2seg.append(list(range(start_idx_seg, start_idx_seg + len(segments))))
             seg_counter += len(segments)
-        ids = tokeniser.encode(segs)[1:-1]
-        # if len(ids) > len(segs):
+        ids = tokeniser.encode(segs, **tokeniser_kwargs)
+        if len(ids) > len(segs):
+            ids = ids[1:-1]
         #     for i in range(len(tok2seg)):
         #         i_tok2seg = tok2seg[i]
         #         for j in range(len(i_tok2seg)):

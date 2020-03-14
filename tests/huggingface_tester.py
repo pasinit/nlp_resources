@@ -107,9 +107,9 @@ class HuggingfaceTester(TestCase):
         sim2 = cossim(bank2, vanilla_bank_2).item()
         sim3 = cossim(bank3, vanilla_bank_3).item()
 
-        self.assertAlmostEqual(sim1, 1.0, delta=1.0e-1, msg=1.0 - sim1)
-        self.assertAlmostEqual(sim2, 1.0, delta=1.0e-1, msg=1.0 - sim2)
-        self.assertAlmostEqual(sim3, 1.0, delta=1.0e-1, msg=1.0 - sim3)
+        self.assertAlmostEqual(sim1, 1.0, delta=1.0e-4, msg=1.0 - sim1)
+        self.assertAlmostEqual(sim2, 1.0, delta=1.0e-4, msg=1.0 - sim2)
+        self.assertAlmostEqual(sim3, 1.0, delta=1.0e-4, msg=1.0 - sim3)
         print(sim1, sim2, sim3)
 
     def test_semantic_correctness_word_merging(self, model_name):
@@ -249,13 +249,16 @@ from lxml import etree
 import sys
 if __name__ == '__main__':
     # BertTester().test_word_merging()
+    print("Batching stress-test")
+    HuggingfaceTester().batching_test()
     print("Layer aggregation test")
     HuggingfaceTester().layer_aggregation_test()
     sys.exit()
-    print("Batching stress-test")
-    HuggingfaceTester().batching_test()
     print("Word merging test")
     HuggingfaceTester().test_huggingface_models_correctness_word_merging()
+
+
+
 
 
     # BertTester().test_memory_bert()
