@@ -18,9 +18,9 @@ from nlp_utils.huggingface_utils import get_model_kwargs
 
 
 class HuggingfaceModelNames(Enum):
-    XLNET_BASE_CASED = "xlnet-base-cased"
     OPEN_AI_GPT2_BASE = "gpt2"
     BERT_LARGE_CASED = "bert-large-cased"
+    XLNET_BASE_CASED = "xlnet-base-cased"
     XLM_ROBERTA_LARGE = "xlm-roberta-large"
     OPEN_AI_GPT2_MEDIUM = "gpt2-medium"
     BERT_BASE_UNCASED = "bert-base-uncased"
@@ -103,6 +103,14 @@ class GenericHuggingfaceWrapper(Module):
                             "attention_mask": attention_masks}}
 
     def __merge_batch_back(self, batch, batched_tok2seg, oldidx2newidx):
+        """
+        Assumes that the input batch has been already cleaned from the starting token in case the
+        underlying model adds it.
+        :param batch:
+        :param batched_tok2seg:
+        :param oldidx2newidx:
+        :return:
+        """
         batch_merged = list()
         tok2seg = list()
         for i in range(len(oldidx2newidx)):
@@ -114,7 +122,7 @@ class GenericHuggingfaceWrapper(Module):
             u_to_be_merged = to_be_merged.unbind()
             new_to_be_merged = list()
             for j in range(len(seg_ids)):
-                j_seg_ids = list(range(1, len([x + 1 for y in seg_ids[j] for x in y if x is not None and x != []]) + 1))
+                j_seg_ids = list(range(0, len([x + 1 for y in seg_ids[j] for x in y if x is not None and x != []])))
                 if j >= len(u_to_be_merged):
                     print("WARNING: {} out of range of u_to_be_merged. Skipping the rest.".format(j))
                     return None, None
@@ -219,7 +227,7 @@ class GenericHuggingfaceWrapper(Module):
             t2s_i: List[List[int]] = tok2seg[i]
             merged_hs_i = list()
             for seg_ids in t2s_i:
-                hidden_segs = hs_i[np.array(seg_ids) - 1]
+                hidden_segs = hs_i[np.array(seg_ids)]
                 if merge_mode == MergeMode.AVG:
                     merged = torch.mean(hidden_segs, 0)
                 elif merge_mode == MergeMode.SUM:

@@ -174,7 +174,8 @@ def get_batcher(model_name, all_segments, token_type_ids, attention_mask, tokeni
             if seg2token is not None:
                 end_tok_idx, start_tok_idx = get_start_end_token_index(end_index, i_seg2tok, ids, k, t2s)
             ## pad and add each new entry
-            __pad_and_add(model_name, token_limit, ids[k:end_index], types[k:end_index], mask[k:end_index],
+            __pad_and_add(model_name, token_limit, ids[k:end_index], types[k:end_index] if types else None,
+                          mask[k:end_index] if mask else None,
                           t2s[start_tok_idx:end_tok_idx] if seg2token is not None else None,
                           seg_batch, type_ids_batch, mask_batch,
                           tok2seg_batch, tokeniser)

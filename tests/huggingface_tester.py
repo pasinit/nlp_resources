@@ -212,7 +212,7 @@ class HuggingfaceTester(TestCase):
     #     for i in tqdm(range(10)):
     #         out = bert(s)
 
-    def batching_test(self):
+    def batching_test(self, modelname):
         root = etree.parse(
             "/home/tommaso/Documents/data/WSD_Evaluation_Framework/Evaluation_Datasets/senseval2/senseval2.data.xml").getroot()
 
@@ -224,13 +224,13 @@ class HuggingfaceTester(TestCase):
             all_sentences.append(sentence)
         for token_limit in [50, 100, 150, 200, 250, 300]:
             print(token_limit)
-            hf_model = GenericHuggingfaceWrapper(HuggingfaceModelNames.XLM_ROBERTA_LARGE.value, "cuda",
+            hf_model = GenericHuggingfaceWrapper(modelname, "cuda",
                                                  token_limit=token_limit)
             hf_model.sentences_forward(np.array(all_sentences), print_bar=True)
             hf_model.cpu()
             del hf_model
 
-    def layer_aggregation_test(self):
+    def layer_aggregation_test(self, modelname):
         root = etree.parse(
             "/home/tommaso/Documents/data/WSD_Evaluation_Framework/Evaluation_Datasets/senseval2/senseval2.data.xml").getroot()
 
@@ -241,7 +241,7 @@ class HuggingfaceTester(TestCase):
                 sentence.append(token.text)
             all_sentences.append(sentence)
         token_limit = 100
-        hf_model = GenericHuggingfaceWrapper(HuggingfaceModelNames.XLM_ROBERTA_LARGE.value, "cuda",
+        hf_model = GenericHuggingfaceWrapper(modelname, "cuda",
                                              token_limit=token_limit,  output_hidden_states=True)
 
         output = hf_model.sentences_forward(np.array(all_sentences), print_bar=True, aggregate_layers=[-1, -2, -3, -4],
@@ -254,12 +254,12 @@ import sys
 if __name__ == '__main__':
     # BertTester().test_word_merging()
 
-    print("Word merging test")
-    HuggingfaceTester().test_huggingface_models_correctness_word_merging()
+    # print("Word merging test")
+    # HuggingfaceTester().test_huggingface_models_correctness_word_merging()
     print("Batching stress-test")
-    HuggingfaceTester().batching_test()
+    HuggingfaceTester().batching_test(HuggingfaceModelNames.OPEN_AI_GPT2_BASE.value)
     print("Layer aggregation test")
-    HuggingfaceTester().layer_aggregation_test()
+    HuggingfaceTester().layer_aggregation_test(HuggingfaceModelNames.OPEN_AI_GPT2_BASE.value)
     sys.exit()
 
 
