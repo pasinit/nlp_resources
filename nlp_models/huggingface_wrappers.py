@@ -11,12 +11,14 @@ from data_io.batchers import get_batcher
 from nlp_models.bert_wrappers import MergeMode
 import numpy as np
 
-from nlp_utils.huggingface_utils import encode_word_pieces
+from nlp_utils.huggingface_utils import encode_word_pieces, get_needed_start_end_sentence_tokens, \
+    prepends_starting_token
 
 from nlp_utils.huggingface_utils import get_model_kwargs
 
 
 class HuggingfaceModelNames(Enum):
+    XLNET_BASE_CASED = "xlnet-base-cased"
     OPEN_AI_GPT2_BASE = "gpt2"
     BERT_LARGE_CASED = "bert-large-cased"
     XLM_ROBERTA_LARGE = "xlm-roberta-large"
@@ -24,7 +26,7 @@ class HuggingfaceModelNames(Enum):
     BERT_BASE_UNCASED = "bert-base-uncased"
     # XLM_MLM_100_1280 = "xlm-mlm-100-1280"
     ROBERTA_BASE = "roberta-base"
-    XLNET_BASE_CASED = "xlnet-base-cased"
+
 
     # OPEN_AI_GPT2_large = "gpt2-large"
     # XLNET_LARGE_CASED = "xlnet-large-cased"
@@ -144,8 +146,9 @@ class GenericHuggingfaceWrapper(Module):
             tensors_to_aggregate = torch.stack([model_out[-1][x] for x in aggregate_layers], 0)
             hidden_states = self.aggregate_layers(tensors_to_aggregate, layers_aggregation_function)
         else: hidden_states = model_out[0]
-
-        last_hidden_states = hidden_states[:, 1:, :]
+        if prepends_starting_token(self.model_name):
+            last_hidden_states = hidden_states[:, 1:, :]
+        else: last_hidden_states = hidden_states
         merged_batch, tok2seg = self.__merge_batch_back(last_hidden_states, tok2seg, oldidx2newidx)
         return self.__merge_hidden_states(merged_batch, tok2seg, merge_mode)
 

@@ -7,7 +7,8 @@ from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModel
 
 from nlp_models.huggingface_wrappers import GenericHuggingfaceWrapper, HuggingfaceModelNames
-from nlp_utils.huggingface_utils import get_needed_start_end_sentence_tokens, get_tokenizer_kwargs
+from nlp_utils.huggingface_utils import get_needed_start_end_sentence_tokens, get_tokenizer_kwargs, \
+    prepends_starting_token
 
 from nlp_utils.huggingface_utils import get_model_kwargs
 
@@ -90,7 +91,10 @@ class HuggingfaceTester(TestCase):
         index3 = (test_s3_b.index("bank") if "bank" in test_s3_b else test_s3_b.index(
             "Ġbank") if "Ġbank" in test_s3_b else test_s3_b.index(
             "bank</w>") if "bank</w>" in test_s3_b else test_s3_b.index("▁bank")) + 1
-
+        if not prepends_starting_token(model_name):
+            index1 -= 1
+            index2 -= 1
+            index3 -= 1
         vanilla_bank_1 = vanilla_out_1[0][index1]
         vanilla_bank_2 = vanilla_out_2[0][index2]
         vanilla_bank_3 = vanilla_out_3[0][index3]
@@ -249,13 +253,15 @@ from lxml import etree
 import sys
 if __name__ == '__main__':
     # BertTester().test_word_merging()
+
+    print("Word merging test")
+    HuggingfaceTester().test_huggingface_models_correctness_word_merging()
     print("Batching stress-test")
     HuggingfaceTester().batching_test()
     print("Layer aggregation test")
     HuggingfaceTester().layer_aggregation_test()
     sys.exit()
-    print("Word merging test")
-    HuggingfaceTester().test_huggingface_models_correctness_word_merging()
+
 
 
 

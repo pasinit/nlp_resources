@@ -3,12 +3,16 @@ from typing import Tuple, List, Dict
 import numpy as np
 from transformers import PreTrainedTokenizer
 import torch
-
+MODELS_WITH_STARTING_TOKEN=["bert", "distilbert", "roberta", "xlm-roberta", "xlm"]
 def get_tokenizer_kwargs(model_name):
     if model_name.startswith("gpt2") or model_name.startswith("roberta") or model_name.startswith("xlm-roberta"):
         return {"add_prefix_space": True}
+    if model_name.startswith("xlnet"):
+        return {"add_special_tokens": False}
     return {}
 
+def prepends_starting_token(model_name):
+    return any(model_name.lower().startswith(m) for m in MODELS_WITH_STARTING_TOKEN)
 
 def get_needed_start_end_sentence_tokens(model_name, tokeniser: PreTrainedTokenizer):
     if model_name.startswith("bert") or model_name.startswith("distilbert"):
@@ -81,9 +85,10 @@ def encode_word_pieces(tokeniser: PreTrainedTokenizer, sentences: np.ndarray, to
         all_tok2seg.append(tok2seg)
         all_segment_str.append(segs)
         attention_mask.append([1]*len(ids))
-        all_segment_types.append(segment_types)
+        if not model_name.startswith("gpt2"):
+            all_segment_types.append(segment_types)
 
-    return all_segment_str, all_segment_ids, all_segment_types, attention_mask, all_tok2seg
+    return all_segment_str, all_segment_ids, all_segment_types if not model_name.startswith("gpt2") else None, attention_mask, all_tok2seg
 
 
 def get_model_kwargs(model_name, device, kwargs, type_ids, mask):
@@ -107,6 +112,6 @@ def get_model_kwargs(model_name, device, kwargs, type_ids, mask):
         if len(mask.shape) < 2:
             mask = mask.unsqueeze(0)
 
-    kwargs["token_type_ids"] = token_type_ids
+    kwargs["token_type_ids"] = token_type_ids if not model_name.startswith("gpt2") else None
     kwargs["attention_mask"] = mask
     return kwargs

@@ -12,6 +12,8 @@ import numpy as np
 
 
 def __get_batched_elem(token_limit, elem, prefix, postfix, pad):
+    if elem is None:
+        return None
     if prefix is not None:
         elem = [prefix] + elem
     if postfix is not None:
@@ -56,8 +58,9 @@ def __pad_and_add(model_name, token_limit, ids, types, mask, tok2seg, seg_batch,
 def __get_data_to_yield(seg_batch, type_ids_batch, mask_batch, tok2seg_batch, segidx2batchidx, device="cuda"):
     if len(segidx2batchidx[-1]) == 0:
         segidx2batchidx = segidx2batchidx[:-1]
-    return {"seg": torch.LongTensor(seg_batch).to(device), "type": torch.LongTensor(type_ids_batch).to(device),
-            "mask": torch.LongTensor(mask_batch).to(device),
+    return {"seg": torch.LongTensor(seg_batch).to(device),
+            "type": torch.LongTensor(type_ids_batch).to(device) if not all(x is None for x in type_ids_batch) else None,
+            "mask": torch.LongTensor(mask_batch).to(device) if not all(x is None for x in mask_batch) else None,
             "tok2seg": tok2seg_batch, "segid2batchidx": segidx2batchidx}
 
 
@@ -193,8 +196,8 @@ def get_batcher(model_name, all_segments, token_type_ids, attention_mask, tokeni
 
     def get_ith_elements(i, all_segments, token_type_ids, attention_mask, tok2seg, non_starting_segments, seg2token):
         ids = all_segments[i]
-        types = token_type_ids[i]
-        mask = attention_mask[i]
+        types = token_type_ids[i] if token_type_ids else None
+        mask = attention_mask[i] if attention_mask else None
         if tok2seg is not None:
             t2s = tok2seg[i]
             i_non_starting_segments = non_starting_segments[i]
