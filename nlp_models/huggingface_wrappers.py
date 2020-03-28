@@ -8,11 +8,10 @@ from transformers import AutoTokenizer, AutoModel, PreTrainedTokenizer, AutoConf
 from typing import List
 
 from data_io.batchers import get_batcher
-from nlp_models.bert_wrappers import MergeMode
+from to_be_removed.bert_wrappers import MergeMode
 import numpy as np
 
-from nlp_utils.huggingface_utils import encode_word_pieces, get_needed_start_end_sentence_tokens, \
-    prepends_starting_token
+from nlp_utils.huggingface_utils import encode_word_pieces, prepends_starting_token
 
 from nlp_utils.huggingface_utils import get_model_kwargs
 
@@ -80,6 +79,7 @@ class GenericHuggingfaceWrapper(Module):
         return merged_hidden_states, merged_pooled_output
 
     def forward(self, sentences, **kwargs):
+        # TODO refactor
         tokenised_str = [self.tokeniser.tokenize(sentence) for sentence in sentences]
         encoded_data = [self.tokeniser.encode_plus(toks) for toks in tokenised_str]
         input_ids, token_type_ids, attention_masks = list(), list(), list()

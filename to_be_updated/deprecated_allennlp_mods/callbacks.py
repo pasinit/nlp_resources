@@ -1,6 +1,5 @@
 import logging
 import math
-from typing import Union, List
 
 import torch
 from allennlp.common import Tqdm
@@ -9,7 +8,7 @@ from allennlp.training.callbacks import Callback, Events, handle_event, Validate
 from allennlp.training.util import get_metrics, description_from_metrics
 import wandb as wdb
 
-from allennlp_mods.callback_trainer import MyCallbackTrainer
+from to_be_updated.deprecated_allennlp_mods.callback_trainer import MyCallbackTrainer
 
 logger = logging.getLogger(__name__)
 
