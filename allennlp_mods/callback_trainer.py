@@ -3,7 +3,7 @@ import logging
 import math
 import time
 from collections import Iterable
-from typing import List, Dict, Any, Optional, Union, Tuple
+from typing import List, Dict, Any, Optional, Tuple
 
 import torch
 from allennlp.common import Tqdm, Params
@@ -18,9 +18,9 @@ from allennlp.training.callback_trainer import handle_errors
 from allennlp.training.callbacks import Callback, Events
 from allennlp.training.callbacks.callback_handler import CallbackHandler
 from allennlp.training.metric_tracker import MetricTracker
-
 from allennlp.training.optimizers import Optimizer
-from allennlp.training.trainer_pieces import TrainerPieces
+
+# from allennlp.training.trainer_pieces import TrainerPieces
 
 logger = logging.getLogger(__name__)
 
@@ -301,54 +301,54 @@ class MyCallbackTrainer(TrainerBase):
         return self.metrics
 
     # Requires custom from_params.
-    @classmethod
-    def from_params(cls,  # type: ignore
-                    params: Params,
-                    serialization_dir: str,
-                    recover: bool = False,
-                    cache_directory: str = None,
-                    cache_prefix: str = None) -> 'CallbackTrainer':
-        pieces = TrainerPieces.from_params(params, serialization_dir, recover, cache_directory,
-                                           cache_prefix)  # pylint: disable=no-member
-        model = pieces.model
-        params = pieces.params
-        validation_iterator = pieces.validation_iterator or pieces.iterator
-
-        shuffle = params.pop_bool("shuffle", True)
-        num_epochs = params.pop_int("num_epochs", 20)
-        cuda_device = parse_cuda_device(params.pop("cuda_device", -1))
-
-        if isinstance(cuda_device, list):
-            model_device = cuda_device[0]
-        else:
-            model_device = cuda_device
-        if model_device >= 0:
-            # Moving model to GPU here so that the optimizer state gets constructed on
-            # the right device.
-            model = model.cuda(model_device)
-
-        parameters = [[n, p] for n, p in model.named_parameters() if p.requires_grad]
-        optimizer = Optimizer.from_params(parameters, params.pop("optimizer"))
-
-        callbacks_params = params.pop("callbacks", [])
-        callbacks: List[Callback] = [Callback.from_params(params=callback_params,
-                                                          model=model,
-                                                          optimizer=optimizer,
-                                                          instances=pieces.train_dataset,
-                                                          iterator=pieces.iterator,
-                                                          shuffle=shuffle,
-                                                          validation_data=pieces.validation_dataset,
-                                                          validation_iterator=validation_iterator,
-                                                          serialization_dir=serialization_dir)
-                                     for callback_params in callbacks_params]
-
-        params.assert_empty(cls.__name__)
-        return cls(model,
-                   pieces.train_dataset,
-                   pieces.iterator,
-                   optimizer,
-                   num_epochs=num_epochs,
-                   shuffle=shuffle,
-                   serialization_dir=serialization_dir,
-                   cuda_device=cuda_device,
-                   callbacks=callbacks)
+    # @classmethod
+    # def from_params(cls,  # type: ignore
+    #                 params: Params,
+    #                 serialization_dir: str,
+    #                 recover: bool = False,
+    #                 cache_directory: str = None,
+    #                 cache_prefix: str = None) -> 'CallbackTrainer':
+    #     pieces = TrainerPieces.from_params(params, serialization_dir, recover, cache_directory,
+    #                                        cache_prefix)  # pylint: disable=no-member
+    #     model = pieces.model
+    #     params = pieces.params
+    #     validation_iterator = pieces.validation_iterator or pieces.iterator
+    #
+    #     shuffle = params.pop_bool("shuffle", True)
+    #     num_epochs = params.pop_int("num_epochs", 20)
+    #     cuda_device = parse_cuda_device(params.pop("cuda_device", -1))
+    #
+    #     if isinstance(cuda_device, list):
+    #         model_device = cuda_device[0]
+    #     else:
+    #         model_device = cuda_device
+    #     if model_device >= 0:
+    #         # Moving model to GPU here so that the optimizer state gets constructed on
+    #         # the right device.
+    #         model = model.cuda(model_device)
+    #
+    #     parameters = [[n, p] for n, p in model.named_parameters() if p.requires_grad]
+    #     optimizer = Optimizer.from_params(parameters, params.pop("optimizer"))
+    #
+    #     callbacks_params = params.pop("callbacks", [])
+    #     callbacks: List[Callback] = [Callback.from_params(params=callback_params,
+    #                                                       model=model,
+    #                                                       optimizer=optimizer,
+    #                                                       instances=pieces.train_dataset,
+    #                                                       iterator=pieces.iterator,
+    #                                                       shuffle=shuffle,
+    #                                                       validation_data=pieces.validation_dataset,
+    #                                                       validation_iterator=validation_iterator,
+    #                                                       serialization_dir=serialization_dir)
+    #                                  for callback_params in callbacks_params]
+    #
+    #     params.assert_empty(cls.__name__)
+    #     return cls(model,
+    #                pieces.train_dataset,
+    #                pieces.iterator,
+    #                optimizer,
+    #                num_epochs=num_epochs,
+    #                shuffle=shuffle,
+    #                serialization_dir=serialization_dir,
+    #                cuda_device=cuda_device,
+    #                callbacks=callbacks)
