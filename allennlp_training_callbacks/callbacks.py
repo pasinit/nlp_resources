@@ -1,12 +1,13 @@
 import logging
 import math
+from typing import Dict, Any
 
 import torch
+import wandb as wdb
 from allennlp.common import Tqdm
 from allennlp.common.util import lazy_groups_of
-from allennlp.training.callbacks import Callback, Events, handle_event, Validate
+from allennlp.training import EpochCallback, GradientDescentTrainer
 from allennlp.training.util import get_metrics, description_from_metrics
-import wandb as wdb
 
 from to_be_updated.deprecated_allennlp_mods.callback_trainer import MyCallbackTrainer
 
@@ -70,61 +71,48 @@ class OutputWriter():
         self.epoch = epoch
 
 
-class OutputWriterCallback(Callback):
+@EpochCallback.register("output_writer_callback")
+class OutputWriterCallback(EpochCallback):
     def __init__(self, owriter: OutputWriter):
         self.owriter = owriter
 
-    @handle_event(Events.EPOCH_END)
-    def on_epoch_end(self, trainer: MyCallbackTrainer):
+    def __call__(self, trainer: GradientDescentTrainer, metrics: Dict[str, Any], epoch: int):
         self.owriter.set_epoch(trainer.epoch_number + 1)
         self.owriter.reset()
 
 
-@Callback.register("wandbn_training")
-class WanDBTrainingCallback(Callback):
-    @handle_event(Events.EPOCH_END)
-    def on_validation(self, trainer: 'MyCallbackTrainer'):
+@EpochCallback.register("wandbn_training")
+class WanDBTrainingCallback(EpochCallback):
+    def __call__(self,  trainer: GradientDescentTrainer, metrics: Dict[str, Any], epoch: int):
         train_metrics = trainer.train_metrics
         wdb.log(train_metrics)
 
 
-@Callback.register("validate_and_write")
-class ValidateAndWrite(Validate):
-    def __init__(self, validation_data, validation_iterator, output_writer: OutputWriter = None, name: str = None,
+@EpochCallback.register("test_and_write")
+class TestAndWrite(EpochCallback):
+    def __init__(self, test_iterator, output_writer: OutputWriter = None, name: str = None,
                  wandb: bool = False, is_dev=False, metric_to_track=None):
-        super().__init__(validation_data, validation_iterator)
+        self.test_iterator = test_iterator
+        self.metric_to_track = metric_to_track
         self.name = name
         self.writer = output_writer
         self.wandb = wandb
         self.is_dev = is_dev
 
-    @handle_event(Events.VALIDATE)
-    def validate(self, trainer: 'MyCallbackTrainer'):
+    def __call__(self, trainer: GradientDescentTrainer, metrics: Dict[str, Any], epoch: int):
         trainer.model.get_metrics(True)
-        # If the trainer has MovingAverage objects, use their weights for validation.
         for moving_average in self.moving_averages:
             moving_average.assign_average_value()
 
         with torch.no_grad():
-            # We have a validation set, so compute all the metrics on it.
-            logger.info("Validating")
-
+            logger.info("Testing")
             trainer.model.eval()
-
-            num_gpus = len(trainer._cuda_devices)  # pylint: disable=protected-access
-
-            raw_val_generator = self.iterator(self.instances,
-                                              num_epochs=1,
-                                              shuffle=False)
-            val_generator = lazy_groups_of(raw_val_generator, num_gpus)
-            num_validation_batches = math.ceil(
-                self.iterator.get_num_batches(self.instances) / num_gpus)
-            val_generator_tqdm = Tqdm.tqdm(val_generator,
-                                           total=num_validation_batches)
             batches_this_epoch = 0
             val_loss = 0
-            for batch_group in val_generator_tqdm:
-                outs, loss = trainer.batch_outs_and_loss(batch_group, for_training=False)
+            bar =  Tqdm(self.test_iterator, desc="testing")
+            for batch_group in bar:
+                outs = trainer.batch_outputs(batch_group, for_training=False)
+                loss = outs["loss"]
                 if self.writer is not None:
                     self.writer.write(outs)
 
@@ -142,15 +130,12 @@ class ValidateAndWrite(Validate):
                 description = description_from_metrics(val_metrics)
                 if self.name is not None:
                     description = "epoch: %d, dataset: %s, %s" % (trainer.epoch_number, self.name, description)
-                val_generator_tqdm.set_description(description, refresh=False)
+                bar.set_description(description, refresh=False)
 
             trainer.val_metrics = get_metrics(trainer.model,
                                               val_loss,
                                               batches_this_epoch,
                                               reset=False)
-            if trainer.track_dev_metrics and self.is_dev:
-                trainer.metric_tracker.add_metric(trainer.val_metrics[trainer.metric_name])
-                self.is_best_so_far = trainer.metric_tracker.is_best_so_far()
             if self.wandb:
                 metrics = trainer.val_metrics
                 if self.name is not None:
@@ -164,6 +149,3 @@ class ValidateAndWrite(Validate):
         self.writer.set_epoch(trainer.epoch_number + 1)
         self.writer.reset()
         trainer.model.get_metrics(True)
-
-    def get_training_state(self):
-        return {"is_best_so_far": getattr(self, "is_best_so_far", True)}
