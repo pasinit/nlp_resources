@@ -7,14 +7,10 @@ from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModel, PreTrainedTokenizer, AutoConfig
 from typing import List
 
-from data_io.batchers import get_batcher
+from nlp_resources.data_io.batchers import get_batcher
+from nlp_resources.nlp_utils.huggingface_utils import get_model_kwargs, prepends_starting_token, encode_word_pieces
 from to_be_removed.bert_wrappers import MergeMode
 import numpy as np
-
-from nlp_utils.huggingface_utils import encode_word_pieces, prepends_starting_token
-
-from nlp_utils.huggingface_utils import get_model_kwargs
-
 
 class HuggingfaceModelNames(Enum):
     OPEN_AI_GPT2_BASE = "gpt2"
@@ -78,29 +74,9 @@ class GenericHuggingfaceWrapper(Module):
                 merged_pooled_output.append(mpo)
         return merged_hidden_states, merged_pooled_output
 
-    def forward(self, sentences, **kwargs):
+    def forward(self, tokens, **kwargs):
         # TODO refactor
-        tokenised_str = [self.tokeniser.tokenize(sentence) for sentence in sentences]
-        encoded_data = [self.tokeniser.encode_plus(toks) for toks in tokenised_str]
-        input_ids, token_type_ids, attention_masks = list(), list(), list()
-
-        for encoded_info_str in encoded_data:
-            i_input_ids, i_token_type_ids = [encoded_info_str[x] for x in ["input_ids", "token_type_ids"]]
-            input_ids.append(i_input_ids)
-            token_type_ids.append(i_token_type_ids)
-            attention_masks.append([1] * len(i_input_ids))
-
-        batch_size = kwargs.get("batch_size", 32)
-        batcher = get_batcher(self.model_name, input_ids, token_type_ids, attention_masks, self.tokeniser,
-                              self.token_limit, self.device, batch_size=batch_size)
-        with self.get_context():
-            for data in batcher():
-                segments, type_ids, mask, oldidx2newidx = [data[x] for x in
-                                                           ["seg", "type", "mask", "segid2batchidx"]]
-                out = self.model(segments, token_type_ids=type_ids, attention_mask=mask, **kwargs)
-        return {"out": out,
-                "bert_in": {"str_tokens": tokenised_str, "ids": input_ids, "segment_ids": token_type_ids,
-                            "attention_mask": attention_masks}}
+        return self.model(tokens, **kwargs)
 
     def __merge_batch_back(self, batch, batched_tok2seg, oldidx2newidx):
         """

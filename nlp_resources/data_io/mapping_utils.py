@@ -1,6 +1,7 @@
 import os
 
-from nlp_utils.utils import get_pos_from_key
+from nlp_resources.nlp_utils.utils import get_pos_from_key
+
 RESOURCES_DIR="resources/"
 
 def get_wnoffset2bnoffset():

@@ -1,16 +1,14 @@
-import unittest
 from unittest import TestCase
 
 import torch
 import numpy as np
-from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModel
 
-from nlp_models.huggingface_wrappers import GenericHuggingfaceWrapper, HuggingfaceModelNames
-from nlp_utils.huggingface_utils import get_needed_start_end_sentence_tokens, get_tokenizer_kwargs, \
+from nlp_resources.nlp_models import GenericHuggingfaceWrapper, HuggingfaceModelNames
+from nlp_resources.nlp_utils import get_needed_start_end_sentence_tokens, get_tokenizer_kwargs, \
     prepends_starting_token
 
-from nlp_utils.huggingface_utils import get_model_kwargs
+from nlp_resources.nlp_utils import get_model_kwargs
 
 
 class HuggingfaceTester(TestCase):
@@ -254,8 +252,8 @@ import sys
 if __name__ == '__main__':
     # BertTester().test_word_merging()
 
-    # print("Word merging test")
-    # HuggingfaceTester().test_huggingface_models_correctness_word_merging()
+    print("Word merging test")
+    HuggingfaceTester().test_huggingface_models_correctness_word_merging()
     print("Batching stress-test")
     HuggingfaceTester().batching_test(HuggingfaceModelNames.OPEN_AI_GPT2_BASE.value)
     print("Layer aggregation test")

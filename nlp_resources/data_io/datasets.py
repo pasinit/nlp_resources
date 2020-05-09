@@ -4,15 +4,15 @@ from collections import OrderedDict, Counter
 from typing import List, Dict, Union
 
 import numpy as np
-from allennlp.data import TokenIndexer, Instance, Tokenizer
+from allennlp.data import TokenIndexer, Instance, Token
 from allennlp.data.dataset_readers.dataset_reader import AllennlpDataset
 from allennlp.data.fields import TextField, MetadataField, ArrayField
 from lxml import etree
 from torchtext.vocab import Vocab
 from tqdm import tqdm
 
-from data_io.mapping_utils import get_wnoffset2bnoffset
-from nlp_utils.utils import get_simplified_pos, get_pos_from_key
+from nlp_resources.data_io.mapping_utils import get_wnoffset2bnoffset
+from nlp_resources.nlp_utils.utils import get_pos_from_key, get_simplified_pos
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 WORDNET_DICT_PATH = "/opt/WordNet-3.0/dict/index.sense"
@@ -68,14 +68,14 @@ class LabelVocabulary(Vocab):
 
 class WSDDataset(AllennlpDataset):
     def __init__(self, paths: Union[list, str], lemma2synsets: Dict[str, List[str]],
-                 label_mapper: Dict[str, str], tokenizer: Tokenizer, indexer: TokenIndexer,
+                 label_mapper: Union[Dict[str, str], None], indexer: TokenIndexer,
                  label_vocab: Vocab,
                  **kwargs):
         self.key2goldid = label_mapper
         self.lemma2synsets = lemma2synsets
-        self.tokenizer = tokenizer
         self.indexers = {"tokens": indexer}
         self.label_vocab = label_vocab
+        self.pad_token_id = indexer._tokenizer.pad_token_id
         examples = self.load_examples(paths, indexer)
 
         super().__init__(examples, **kwargs)
@@ -91,7 +91,7 @@ class WSDDataset(AllennlpDataset):
                     gold = [x for y in gold for x in y]
                 else:
                     gold = [x.replace("%5", "%3") for x in gold]
-                key2gold[key] = gold[0]
+                key2gold[key] = gold
         return key2gold
 
     def load_examples(self, paths, indexer):
@@ -127,25 +127,23 @@ class WSDDataset(AllennlpDataset):
                     labels.append(tokid2gold[elem.attrib["id"]])
                     lemmaposs.append(elem.attrib["lemma"].lower() + "#" + get_simplified_pos(elem.attrib["pos"]))
 
-
             if any(x is not None for x in ids):
                 unique_token_ids = list(range(self.start, self.start + len([x for x in ids if x is not None])))
                 examples.append(
-                    self.text_to_instance(unique_token_ids, words, lemmaposs, ids, np.array(labels),
-                                          tokenizer))
+                    self.text_to_instance(unique_token_ids, words, lemmaposs, ids, np.array(labels)))
                 self.start += len(unique_token_ids)  # unique_token_ids[-1] + 1
+            # if len(examples) == 100:
+            #     break
         return examples
 
     def text_to_instance(self, unique_token_ids: List[int],
                          input_words: List[str],
                          input_lemmapos: List[str],
                          input_ids: List[str],
-                         labels: np.ndarray,
-                         indexer: TokenIndexer) -> Instance:
-        input_words_field = TextField(self.tokenizer.intra_word_tokenize(input_words)[0], self.indexers)
+                         labels: np.ndarray) -> Instance:
+        input_words_field = TextField([Token(x) for x in input_words], self.indexers)
         fields = {"tokens": input_words_field}
         instance_ids = [x for x in input_ids if x is not None][0]
-        instance_ids = ".".join(instance_ids.split(".")[:2])
 
         instance_ids = MetadataField(instance_ids)
         cache_instance_id = MetadataField(unique_token_ids)
@@ -158,13 +156,14 @@ class WSDDataset(AllennlpDataset):
         fields["lemmapos"] = lemmapos_field
 
         if labels is None:
-            labels = np.zeros(len(input_words_field))
+            labels = np.zeros(len(input_words))
 
         label_ids = []
-        for l in labels:
-            if len(l) < 1:
+        for labels_for_instance in labels:
+            if len(labels_for_instance) < 1:
                 label_ids.append(self.label_vocab.get_idx("<pad>"))
             else:
+                l = labels_for_instance[0]
                 label_ids.append(
                     self.label_vocab.get_idx(l) if l in self.label_vocab.stoi
                     else self.label_vocab.get_idx(

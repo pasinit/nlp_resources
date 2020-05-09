@@ -1,15 +1,12 @@
 import logging
-import math
 from typing import Dict, Any
 
 import torch
 import wandb as wdb
 from allennlp.common import Tqdm
-from allennlp.common.util import lazy_groups_of
 from allennlp.training import EpochCallback, GradientDescentTrainer
 from allennlp.training.util import get_metrics, description_from_metrics
-
-from to_be_updated.deprecated_allennlp_mods.callback_trainer import MyCallbackTrainer
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -77,15 +74,14 @@ class OutputWriterCallback(EpochCallback):
         self.owriter = owriter
 
     def __call__(self, trainer: GradientDescentTrainer, metrics: Dict[str, Any], epoch: int):
-        self.owriter.set_epoch(trainer.epoch_number + 1)
+        self.owriter.set_epoch(epoch + 1)
         self.owriter.reset()
 
 
 @EpochCallback.register("wandbn_training")
 class WanDBTrainingCallback(EpochCallback):
     def __call__(self,  trainer: GradientDescentTrainer, metrics: Dict[str, Any], epoch: int):
-        train_metrics = trainer.train_metrics
-        wdb.log(train_metrics)
+        wdb.log(metrics)
 
 
 @EpochCallback.register("test_and_write")
@@ -100,16 +96,19 @@ class TestAndWrite(EpochCallback):
         self.is_dev = is_dev
 
     def __call__(self, trainer: GradientDescentTrainer, metrics: Dict[str, Any], epoch: int):
+
         trainer.model.get_metrics(True)
-        for moving_average in self.moving_averages:
-            moving_average.assign_average_value()
+        if epoch <0:
+            return
+        # for moving_average in self.moving_averages:
+        #     moving_average.assign_average_value()
 
         with torch.no_grad():
             logger.info("Testing")
             trainer.model.eval()
             batches_this_epoch = 0
             val_loss = 0
-            bar =  Tqdm(self.test_iterator, desc="testing")
+            bar =  tqdm(self.test_iterator, desc="testing")
             for batch_group in bar:
                 outs = trainer.batch_outputs(batch_group, for_training=False)
                 loss = outs["loss"]
@@ -126,13 +125,14 @@ class TestAndWrite(EpochCallback):
                     val_loss += loss.detach().cpu().numpy()
 
                 # Update the description with the latest metrics
-                val_metrics = get_metrics(trainer.model, val_loss, batches_this_epoch)
+                val_metrics = get_metrics(trainer.model, val_loss, val_loss, batches_this_epoch)
                 description = description_from_metrics(val_metrics)
                 if self.name is not None:
-                    description = "epoch: %d, dataset: %s, %s" % (trainer.epoch_number, self.name, description)
+                    description = "epoch: %d, dataset: %s, %s" % (epoch, self.name, description)
                 bar.set_description(description, refresh=False)
 
             trainer.val_metrics = get_metrics(trainer.model,
+                                              val_loss,
                                               val_loss,
                                               batches_this_epoch,
                                               reset=False)
@@ -140,12 +140,12 @@ class TestAndWrite(EpochCallback):
                 metrics = trainer.val_metrics
                 if self.name is not None:
                     metrics = {self.name + "_" + k: v for k, v in metrics.items()}
-                metrics["step"] = trainer.epoch_number
-                wdb.log(metrics, step=trainer.epoch_number)
+                metrics["step"] = epoch
+                wdb.log(metrics, step=epoch)
         # If the trainer has a moving average, restore
-        for moving_average in self.moving_averages:
-            moving_average.restore()
+        # for moving_average in self.moving_averages:
+        #     moving_average.restore()
 
-        self.writer.set_epoch(trainer.epoch_number + 1)
+        self.writer.set_epoch(epoch + 1)
         self.writer.reset()
         trainer.model.get_metrics(True)

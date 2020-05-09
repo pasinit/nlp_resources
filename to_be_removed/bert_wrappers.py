@@ -1,15 +1,13 @@
-import math
 from enum import Enum
-from typing import List, Tuple
-from data_io.batchers import get_batcher
+from typing import List
+from nlp_resources.data_io.batchers import get_batcher
 from numpy.compat import contextlib_nullcontext
 from torch.nn import Module
 import numpy as np
 import torch
 from transformers import BertTokenizer, BertModel, BertForNextSentencePrediction
-from deprecated import deprecated
 
-from nlp_utils.huggingface_utils import encode_word_pieces
+from nlp_resources.nlp_utils.huggingface_utils import encode_word_pieces
 
 
 class BertNames(Enum):

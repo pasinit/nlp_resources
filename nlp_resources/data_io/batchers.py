@@ -1,14 +1,15 @@
 import math
 from abc import ABC, abstractmethod
-from random import shuffle, random
+from random import shuffle
 
 import torch
 from torch.utils.data.dataset import IterableDataset
 from transformers import PreTrainedTokenizer
 from typing import Iterator
 
-from nlp_utils.huggingface_utils import get_needed_start_end_sentence_tokens, encode_word_pieces
 import numpy as np
+
+from nlp_resources.nlp_utils.huggingface_utils import get_needed_start_end_sentence_tokens
 
 
 def __get_batched_elem(token_limit, elem, prefix, postfix, pad):
