@@ -7,3 +7,6 @@ nlp_models/__pycache__
 *__init__*
 .*
 venv
+build
+dist
+nlp_resources.egg-info
