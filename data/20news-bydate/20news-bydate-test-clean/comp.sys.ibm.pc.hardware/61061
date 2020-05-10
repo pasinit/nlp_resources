@@ -1,7 +1,0 @@
-NNTP-Posting-Host: mueller.rz.uni-duesseldorf.de
-Seeing all these questions about uart types, their availability, and their
-relative merits, wouldn't it be fine, if for internal highspeed modems there
-were a mode of operation bypassing the dull and stupid uart interface and
-instead accessing directly the relatively large send/receive buffers of the
-modem, thus eliminating all problems with interrupt latencies ?
-Just an idea,

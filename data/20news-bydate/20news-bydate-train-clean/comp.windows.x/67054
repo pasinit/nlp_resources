@@ -1,7 +1,0 @@
-In-reply-to: 's message of 20 Apr 93 01:12:28 GMT
-In article <> (Ken Whaley) writes:
-As per your question: why not have the button handler add the object, and
-then call the "window_redraw()" (or whatever) directly? Although, depending
-This design will work but I don't think it can take easily take advantage
-of expose event redraw optimization; that is, the whole window will be
-redrawn, not just the area with the new item.

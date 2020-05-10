@@ -1,8 +1,0 @@
-Distribution: world
-Reply-To:
-NNTP-Posting-Host: irzr17.inf.tu-dresden.de
-what about
-qrttoppm < file.dis | ppmtotga > file.tga
-??
---
-+-o-+--------------------------------------------------------------+-o-+

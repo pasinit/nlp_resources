@@ -1,9 +1,0 @@
-Distribution: world
-NNTP-Posting-Host: caspian.usc.edu
-In article <>, (G.W.Bultman) writes:
-|> Hi,
-|>
-|> I'm looking for RGB (cube) --> HLS (double hexcone) --> HSV (cylinder)
-|> conversion routines. I have RGB <--> HSV, but miss the HLS <--> RGB/HSV.
-|>
-Have you checked Foley's book? The solutions are in chapter 13.

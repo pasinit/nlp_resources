@@ -1,5 +1,0 @@
-Distribution: world
-NNTP-Posting-Host: mercury.mit.edu
-Keywords: plotting program, contour, mesh
-I am trying to find a program which can run under the environment
-ULTRIX/X11R4 to plot surfaces and contour plots from a set of {x,y,z}.

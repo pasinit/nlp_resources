@@ -1,5 +1,0 @@
-Nntp-Posting-Host: 141.217.4.31
-I've installed many X apps, and have that many of them Imakefiles that have
-lines startingwith XCOMM in them. When I do a xmkmf to create the Makefile,
-the Makefile also has the XCOMM (comment?) lines in them. I always have
-to edit out these lines because the make command barfs on them. I was
