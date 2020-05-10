@@ -1,6 +1,33 @@
 from allennlp.data import Batch
 from torchtext.data import BucketIterator
 
+
+def sorting_key(x):
+    return len(x.fields["tokens"]._indexed_tokens["tokens"]["token_ids"])
+
+
+def get_bucket_iterator(dataset, max_tokens_in_batch,
+                        sort_key=sorting_key,
+                        sort=True,
+                        sort_within_batch=False,
+                        repeat=False):
+    return AllenWSDDatasetBucketIterator(dataset, max_tokens_in_batch, device="cuda",
+                                         sort_key=sort_key,
+                                         sort=sort,
+                                         sort_within_batch=sort_within_batch, batch_size_fn=get_batch_size,
+                                         repeat=repeat)
+
+
+def get_batch_size(ex, num_ex, curr_size):
+    ids = ex.fields["tokens"]._indexed_tokens["tokens"]["token_ids"]
+    max_len_so_far = curr_size / max(num_ex, 1)
+    if max_len_so_far == 0:
+        return len(ids) + curr_size
+    if len(ids) > max_len_so_far:
+        return len(ids) * (num_ex + 1)
+    return curr_size + max_len_so_far
+
+
 class AllenWSDDatasetBucketIterator(BucketIterator):
     def __len__(self):
         if not hasattr(self, "batches"):
@@ -29,25 +56,3 @@ class AllenWSDDatasetBucketIterator(BucketIterator):
                 yield batch.as_tensor_dict(batch.get_padding_lengths())
             if not self.repeat:
                 return
-
-    @classmethod
-    def get_bucket_iterator(cls, dataset, max_tokens_in_batch,
-                            sort_key=lambda x: len(x.fields["tokens"]._indexed_tokens["tokens"]["token_ids"]),
-                            sort=True,
-                            sort_within_batch=False,
-                            repeat=False):
-        return cls(dataset, max_tokens_in_batch, device="cuda",
-                   sort_key=sort_key,
-                   sort=sort,
-                   sort_within_batch=sort_within_batch, batch_size_fn=AllenWSDDatasetBucketIterator.__get_batch_size,
-                   repeat=repeat)
-
-    @staticmethod
-    def __get_batch_size(ex, num_ex, curr_size):
-        ids = ex.fields["tokens"]._indexed_tokens["tokens"]["token_ids"]
-        max_len_so_far = curr_size / max(num_ex, 1)
-        if max_len_so_far == 0:
-            return len(ids) + curr_size
-        if len(ids) > max_len_so_far:
-            return len(ids) * (num_ex + 1)
-        return curr_size + max_len_so_far
