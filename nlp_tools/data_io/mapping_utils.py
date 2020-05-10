@@ -1,6 +1,6 @@
 import os
 
-from nlp_resources.nlp_utils.utils import get_pos_from_key
+from nlp_tools.nlp_utils.utils import get_pos_from_key
 
 RESOURCES_DIR="resources/"
 

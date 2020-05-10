@@ -9,7 +9,7 @@ from typing import Iterator
 
 import numpy as np
 
-from nlp_resources.nlp_utils.huggingface_utils import get_needed_start_end_sentence_tokens
+from nlp_tools.nlp_utils.huggingface_utils import get_needed_start_end_sentence_tokens
 
 
 def __get_batched_elem(token_limit, elem, prefix, postfix, pad):

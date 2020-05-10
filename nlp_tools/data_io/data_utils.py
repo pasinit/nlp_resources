@@ -2,8 +2,8 @@ from typing import Dict
 
 from lxml import etree
 
-from nlp_resources.data_io.datasets import WORDNET_DICT_PATH
-from nlp_resources.nlp_utils.utils import get_pos_from_key, get_simplified_pos
+from nlp_tools.data_io.datasets import WORDNET_DICT_PATH
+from nlp_tools.nlp_utils.utils import get_pos_from_key, get_simplified_pos
 
 
 def load_bn_offset2bnid_map(path):

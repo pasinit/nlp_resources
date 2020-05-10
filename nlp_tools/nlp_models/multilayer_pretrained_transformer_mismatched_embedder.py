@@ -5,7 +5,7 @@ from allennlp.modules.token_embedders.token_embedder import TokenEmbedder
 from allennlp.nn import util
 from overrides import overrides
 
-from nlp_resources.nlp_models.multilayer_pretrained_transformer_embedder import MultilayerPretrainedTransformerEmbedder
+from nlp_tools.nlp_models.multilayer_pretrained_transformer_embedder import MultilayerPretrainedTransformerEmbedder
 
 """
 Most of this code is copied from allennlp library version 1.0 RC4.

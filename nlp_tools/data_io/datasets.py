@@ -11,8 +11,8 @@ from lxml import etree
 from torchtext.vocab import Vocab
 from tqdm import tqdm
 
-from nlp_resources.data_io.mapping_utils import get_wnoffset2bnoffset
-from nlp_resources.nlp_utils.utils import get_pos_from_key, get_simplified_pos
+from nlp_tools.data_io.mapping_utils import get_wnoffset2bnoffset
+from nlp_tools.nlp_utils.utils import get_pos_from_key, get_simplified_pos
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 WORDNET_DICT_PATH = "/opt/WordNet-3.0/dict/index.sense"

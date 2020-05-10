@@ -7,8 +7,8 @@ from tqdm import tqdm
 from transformers import AutoTokenizer, AutoModel, PreTrainedTokenizer, AutoConfig
 from typing import List
 
-from nlp_resources.data_io.batchers import get_batcher
-from nlp_resources.nlp_utils.huggingface_utils import get_model_kwargs, prepends_starting_token, encode_word_pieces
+from nlp_tools.data_io.batchers import get_batcher
+from nlp_tools.nlp_utils.huggingface_utils import get_model_kwargs, prepends_starting_token, encode_word_pieces
 from to_be_removed.bert_wrappers import MergeMode
 import numpy as np
 

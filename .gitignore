@@ -2,7 +2,7 @@
 .gitattributes 
 .idea
 .ideaold3
-nlp_resources/nlp_models/__pycache__
+nlp_tools/nlp_models/__pycache__
 *__pycache__*
 *__init__*
 .*

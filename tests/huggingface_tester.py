@@ -4,8 +4,8 @@ import torch
 import numpy as np
 from transformers import AutoTokenizer, AutoModel
 
-from nlp_resources.nlp_models.huggingface_wrappers import HuggingfaceModelNames, GenericHuggingfaceWrapper
-from nlp_resources.nlp_utils.huggingface_utils import get_tokenizer_kwargs, get_needed_start_end_sentence_tokens, \
+from nlp_tools.nlp_models.huggingface_wrappers import HuggingfaceModelNames, GenericHuggingfaceWrapper
+from nlp_tools.nlp_utils.huggingface_utils import get_tokenizer_kwargs, get_needed_start_end_sentence_tokens, \
     prepends_starting_token
 
 
