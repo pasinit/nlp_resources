@@ -191,19 +191,7 @@ class WSDDataset(AllennlpDataset):
             possible_labels.append(classes)
 
         assert len(labeled_lemmapos) == len(labeled_token_indices) == len(possible_labels)
-        # assert len(fields["labels"].metadata) == len(labeled_lemmapos)
         possible_labels_field = MetadataField(possible_labels)
         fields["possible_labels"] = possible_labels_field
 
         return Instance(fields)
-
-    # def sliding_window(self, words, lemmapos, ids, labels):
-    #     for i in range(0, len(words), self.sliding_window_size):
-    #         w_window = words[i:i + self.max_sentence_len]
-    #         lp_window = lemmapos[i:i + self.max_sentence_len]
-    #         is_window = ids[i:i + self.max_sentence_len]
-    #         ls = labels[i:i + self.max_sentence_len]
-    #         yield w_window, lp_window, is_window, ls
-    #         if i + self.max_sentence_len > len(words):
-    #             break
-    #     return

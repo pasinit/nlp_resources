@@ -77,10 +77,6 @@ def encode_word_pieces(tokeniser: PreTrainedTokenizer, sentences: np.ndarray, to
         ids = tokeniser.encode(segs, **tokeniser_kwargs)
         if len(ids) > len(segs):
             ids = ids[1:-1]
-        #     for i in range(len(tok2seg)):
-        #         i_tok2seg = tok2seg[i]
-        #         for j in range(len(i_tok2seg)):
-        #             i_tok2seg[j] += 1
         all_segment_ids.append(ids)
         all_tok2seg.append(tok2seg)
         all_segment_str.append(segs)
@@ -92,13 +88,6 @@ def encode_word_pieces(tokeniser: PreTrainedTokenizer, sentences: np.ndarray, to
 
 
 def get_model_kwargs(model_name, device, kwargs, type_ids, mask):
-    # if model_name.startswith("distilbert"):
-    #     mask = torch.LongTensor(mask).to(device) if mask is not None else None
-    #     if mask is not None:
-    #         if len(mask.shape) < 2:
-    #             mask = mask.unsqueeze(0)
-    #     kwargs["attention_mask"] = mask
-    #     return kwargs
     if type(type_ids) == list:
         type_ids = torch.LongTensor(type_ids).to(device)
     if type(mask) == list:
