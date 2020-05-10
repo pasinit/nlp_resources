@@ -1,6 +1,6 @@
 import unittest
 
-from nlp_resources.twenty_newsgroup import TwentyNewsgroup
+from to_be_removed.nlp_resources.twenty_newsgroup import TwentyNewsgroup
 
 
 class Test20Newsgroup(unittest.TestCase):

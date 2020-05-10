@@ -1,4 +1,4 @@
-from nlp_models.huggingface_wrappers import GenericHuggingfaceWrapper, HuggingfaceModelNames
+from nlp_resources.nlp_models import GenericHuggingfaceWrapper, HuggingfaceModelNames
 import numpy as np
 
 from lxml import etree

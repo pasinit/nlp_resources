@@ -2,11 +2,10 @@ import os
 import re
 from random import shuffle
 
-import torch
-from spacy.tokenizer import Tokenizer
-from spacy.lang.en import English
-import numpy as np
 import nltk
+import numpy as np
+from spacy.lang.en import English
+from spacy.tokenizer import Tokenizer
 
 
 class TwentyNewsgroup:

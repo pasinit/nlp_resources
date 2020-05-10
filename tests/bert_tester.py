@@ -1,4 +1,3 @@
-import unittest
 from unittest import TestCase
 
 import torch
@@ -6,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from transformers import BertModel, BertTokenizer
 
-from nlp_models.bert_wrappers import BertSentencePredictionWrapper, BertTokeniserWrapper, BertWrapper, BertNames
+from to_be_removed.bert_wrappers import BertSentencePredictionWrapper, BertTokeniserWrapper, BertWrapper, BertNames
 
 
 class BertTester(TestCase):
