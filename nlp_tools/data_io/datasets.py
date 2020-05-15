@@ -11,11 +11,11 @@ from lxml import etree
 from torchtext.vocab import Vocab
 from tqdm import tqdm
 
+from nlp_tools.data_io.data_utils import MultilingualLemma2Synsets, WORDNET_DICT_PATH
 from nlp_tools.data_io.mapping_utils import get_wnoffset2bnoffset
 from nlp_tools.nlp_utils.utils import get_pos_from_key, get_simplified_pos
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
-WORDNET_DICT_PATH = "/opt/WordNet-3.0/dict/index.sense"
 
 
 def wnoffset_vocabulary():
@@ -67,7 +67,7 @@ class LabelVocabulary(Vocab):
 
 
 class WSDDataset(AllennlpDataset):
-    def __init__(self, paths: Union[list, str], lemma2synsets: Dict[str, List[str]],
+    def __init__(self, lang2paths: Dict[str, List[str]], lemma2synsets: MultilingualLemma2Synsets,
                  label_mapper: Union[Dict[str, str], None], indexer: TokenIndexer,
                  label_vocab: Vocab,
                  **kwargs):
@@ -76,7 +76,7 @@ class WSDDataset(AllennlpDataset):
         self.indexers = {"tokens": indexer}
         self.label_vocab = label_vocab
         self.pad_token_id = indexer._tokenizer.pad_token_id
-        examples = self.load_examples(paths, indexer)
+        examples = self.load_examples(lang2paths)
 
         super().__init__(examples, **kwargs)
 
@@ -94,21 +94,20 @@ class WSDDataset(AllennlpDataset):
                 key2gold[key] = gold
         return key2gold
 
-    def load_examples(self, paths, indexer):
+    def load_examples(self, lang2paths):
         self.start = 0
-        if type(paths) != list:
-            paths = [paths]
         all_examples = list()
-        for i, file_path in enumerate(paths):
-            gold_file = file_path.replace(".data.xml", ".gold.key.txt")
-            tokid2gold = self.load_gold_file(gold_file)
-            aux = self.load_xml(tokid2gold, file_path, indexer)
-            all_examples.extend(aux)
+        for i, (lang, paths) in enumerate(lang2paths.items()):
+            for file_path in paths:
+                gold_file = file_path.replace(".data.xml", ".gold.key.txt")
+                tokid2gold = self.load_gold_file(gold_file)
+                aux = self.load_xml(tokid2gold, file_path, lang)
+                all_examples.extend(aux)
         return all_examples
 
-    def load_xml(self, tokid2gold, file_path, tokenizer):
+    def load_xml(self, tokid2gold, file_path, lang):
         examples = list()
-        for _, sentence in tqdm(etree.iterparse(file_path, tag="sentence"), desc="reading {}".format(file_path)):
+        for _, sentence in tqdm(etree.iterparse(file_path, tag="sentence"), desc="reading {}".format(file_path.split("/")[-1])):
             words = list()
             lemmaposs = list()
             ids = list()
@@ -130,7 +129,7 @@ class WSDDataset(AllennlpDataset):
             if any(x is not None for x in ids):
                 unique_token_ids = list(range(self.start, self.start + len([x for x in ids if x is not None])))
                 examples.append(
-                    self.text_to_instance(unique_token_ids, words, lemmaposs, ids, np.array(labels)))
+                    self.text_to_instance(unique_token_ids, words, lemmaposs, ids, np.array(labels), lang))
                 self.start += len(unique_token_ids)  # unique_token_ids[-1] + 1
             # if len(examples) == 100:
             #     break
@@ -140,20 +139,15 @@ class WSDDataset(AllennlpDataset):
                          input_words: List[str],
                          input_lemmapos: List[str],
                          input_ids: List[str],
-                         labels: np.ndarray) -> Instance:
+                         labels: np.ndarray,
+                         lang: str) -> Instance:
         input_words_field = TextField([Token(x) for x in input_words], self.indexers)
         fields = {"tokens": input_words_field}
-        instance_ids = [x for x in input_ids if x is not None][0]
 
-        instance_ids = MetadataField(instance_ids)
         cache_instance_id = MetadataField(unique_token_ids)
-        fields["instance_ids"] = instance_ids
         fields["cache_instance_ids"] = cache_instance_id
         id_field = MetadataField(input_ids)
         fields["ids"] = id_field
-
-        lemmapos_field = MetadataField(input_lemmapos)
-        fields["lemmapos"] = lemmapos_field
 
         if labels is None:
             labels = np.zeros(len(input_words))
@@ -176,8 +170,7 @@ class WSDDataset(AllennlpDataset):
         fields["labels"] = MetadataField([ls for ls in labels if ls is not None])
 
         labeled_token_indices = np.array([i for i, l in enumerate(labels) if len(l) > 0],
-                                         dtype=np.int64)  # np.argwhere(labels != "").flatten().astype(np.int64)
-        fields["labeled_token_indices"] = MetadataField(labeled_token_indices)
+                                         dtype=np.int64)
 
         labeled_lemmapos = MetadataField(np.array(input_lemmapos)[labeled_token_indices])
         fields["labeled_lemmapos"] = labeled_lemmapos
@@ -185,13 +178,14 @@ class WSDDataset(AllennlpDataset):
         for i in range(len(input_lemmapos)):
             if input_ids[i] is None:
                 continue
-            classes = self.lemma2synsets.get(input_lemmapos[i], [None])
-            classes = np.array(list(classes))
+            classes = self.lemma2synsets.get(input_lemmapos[i], lang, [self.label_vocab.unk_index])
+            classes = np.array(classes)
 
             possible_labels.append(classes)
 
         assert len(labeled_lemmapos) == len(labeled_token_indices) == len(possible_labels)
         possible_labels_field = MetadataField(possible_labels)
         fields["possible_labels"] = possible_labels_field
+        fields["lang"] = MetadataField(lang)
 
         return Instance(fields)

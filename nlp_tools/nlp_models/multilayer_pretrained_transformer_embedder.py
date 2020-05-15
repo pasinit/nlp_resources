@@ -1,5 +1,5 @@
 import math
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Callable
 
 import torch
 import torch.nn.functional as F
@@ -7,6 +7,7 @@ from allennlp.data.tokenizers import PretrainedTransformerTokenizer
 from allennlp.modules.token_embedders.token_embedder import TokenEmbedder
 from allennlp.nn.util import batched_index_select
 from overrides import overrides
+from torch import Tensor
 from transformers import XLNetConfig, AutoConfig
 from transformers.modeling_auto import AutoModel
 
@@ -15,7 +16,8 @@ Most of this code is copied from allennlp library version 1.0 RC4.
 """
 
 class MultilayerPretrainedTransformerEmbedder(TokenEmbedder):
-    def __init__(self, model_name: str, layers_to_merge: List, max_length: int = None) -> None:
+    def __init__(self, model_name: str, layers_to_merge: List, max_length: int = None,
+                 layer_merger:Callable[[List[Tensor]],Tensor] = sum) -> None:
         super().__init__()
         config = AutoConfig.from_pretrained(model_name, output_hidden_states=True)
         self.transformer_model = AutoModel.from_pretrained(model_name, config=config)
@@ -24,6 +26,7 @@ class MultilayerPretrainedTransformerEmbedder(TokenEmbedder):
         # I'm not sure if this works for all models; open an issue on github if you find a case
         # where it doesn't work.
         self.output_dim = self.transformer_model.config.hidden_size
+        self.layer_merger = layer_merger
 
         tokenizer = PretrainedTransformerTokenizer(model_name)
         self._num_added_start_tokens = tokenizer.num_added_start_tokens
@@ -108,7 +111,7 @@ class MultilayerPretrainedTransformerEmbedder(TokenEmbedder):
             parameters["token_type_ids"] = type_ids
         _, _, layer_embeddings = self.transformer_model(**parameters)
         embeddings_to_merge = [layer_embeddings[i] for i in self.layers_to_merge]
-        embeddings = sum(embeddings_to_merge)
+        embeddings = self.layer_merger(embeddings_to_merge)
 
         if fold_long_sequences:
             embeddings = self._unfold_long_sequences(

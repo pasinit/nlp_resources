@@ -2,9 +2,9 @@ from typing import Dict
 
 from lxml import etree
 
-from nlp_tools.data_io.datasets import WORDNET_DICT_PATH
 from nlp_tools.nlp_utils.utils import get_pos_from_key, get_simplified_pos
 
+WORDNET_DICT_PATH = "/opt/WordNet-3.0/dict/index.sense"
 
 def load_bn_offset2bnid_map(path):
     offset2bnid = dict()
@@ -50,8 +50,23 @@ def load_bn_key2id_map(path):
     return key2bn
 
 
+class MultilingualLemma2Synsets:
+    def __init__(self, **kwargs):
+        self.lang2inventory = kwargs
+
+    def get_inventory(self, lang):
+        return self.lang2inventory.get(lang, None)
+
+    def get(self, lexeme, lang = "en", default=None):
+        if lang not in self.lang2inventory:
+            return default
+        return self.lang2inventory[lang].get(lexeme, default)
+
 class Lemma2Synsets(dict):
-    def __init__(self, path: str = None, data: Dict = None, separator="\t", key_transform=lambda x: x,
+    def __init__(self, path: str = None,
+                 data: Dict = None,
+                 separator="\t",
+                 key_transform=lambda x: x,
                  value_transform=lambda x: x):
         """
         :param path: path to lemma 2 synset map.

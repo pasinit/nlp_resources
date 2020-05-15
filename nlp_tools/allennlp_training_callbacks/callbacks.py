@@ -78,27 +78,52 @@ class OutputWriterCallback(EpochCallback):
         self.owriter.reset()
 
 
+class WanDBLogger():
+    def __init__(self, metrics_to_report, soft_match=True):
+        self.metrics_to_report = metrics_to_report
+        self.soft_match = soft_match
+
+    def __call__(self, metrics: Dict[str, Any], epoch:int, prefix:str = None):
+        metrics_keys = set()
+        if self.soft_match:
+            for k in self.metrics_to_report:
+                for mk in metrics.keys():
+                    if mk.endswith(k):
+                        metrics_keys.add(mk)
+        else:
+            metrics_keys = self.metrics_to_report
+        report = {(prefix + "_" if prefix is not None else "") + k: metrics[k] for k in metrics_keys if k in metrics}
+        report["step"] = epoch
+        wdb.log(report, step=epoch)
+
+
 @EpochCallback.register("wandbn_training")
 class WanDBTrainingCallback(EpochCallback):
-    def __call__(self,  trainer: GradientDescentTrainer, metrics: Dict[str, Any], epoch: int):
-        wdb.log(metrics)
+    def __init__(self, wandb_logger: WanDBLogger):
+        self.wandb_logger = wandb_logger
+
+    def __call__(self, trainer: GradientDescentTrainer, metrics: Dict[str, Any], epoch: int):
+        metrics["step"] = epoch
+        self.wandb_logger(metrics, epoch)
+
+
 
 
 @EpochCallback.register("test_and_write")
 class TestAndWrite(EpochCallback):
     def __init__(self, test_iterator, output_writer: OutputWriter = None, name: str = None,
-                 wandb: bool = False, is_dev=False, metric_to_track=None):
+                 wandb_logger:WanDBLogger = None, is_dev=False, metric_to_track=None):
         self.test_iterator = test_iterator
         self.metric_to_track = metric_to_track
         self.name = name
         self.writer = output_writer
-        self.wandb = wandb
+        self.wandb_logger = wandb_logger
         self.is_dev = is_dev
 
     def __call__(self, trainer: GradientDescentTrainer, metrics: Dict[str, Any], epoch: int):
 
         trainer.model.get_metrics(True)
-        if epoch <0:
+        if epoch < 0:
             return
         # for moving_average in self.moving_averages:
         #     moving_average.assign_average_value()
@@ -108,7 +133,7 @@ class TestAndWrite(EpochCallback):
             trainer.model.eval()
             batches_this_epoch = 0
             val_loss = 0
-            bar =  tqdm(self.test_iterator, desc="testing")
+            bar = tqdm(self.test_iterator, desc="testing")
             for batch_group in bar:
                 outs = trainer.batch_outputs(batch_group, for_training=False)
                 loss = outs["loss"]
@@ -136,12 +161,8 @@ class TestAndWrite(EpochCallback):
                                               val_loss,
                                               batches_this_epoch,
                                               reset=False)
-            if self.wandb:
-                metrics = trainer.val_metrics
-                if self.name is not None:
-                    metrics = {self.name + "_" + k: v for k, v in metrics.items()}
-                metrics["step"] = epoch
-                wdb.log(metrics, step=epoch)
+            if self.wandb_logger is not None:
+                self.wandb_logger(trainer.val_metrics, epoch, prefix = self.name)
         # If the trainer has a moving average, restore
         # for moving_average in self.moving_averages:
         #     moving_average.restore()

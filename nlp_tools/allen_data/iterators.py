@@ -1,5 +1,5 @@
 from allennlp.data import Batch
-from torchtext.data import BucketIterator
+from torchtext.data import BucketIterator, batch, pool
 
 
 def sorting_key(x):
@@ -8,14 +8,16 @@ def sorting_key(x):
 
 def get_bucket_iterator(dataset, max_tokens_in_batch,
                         sort_key=sorting_key,
-                        sort=True,
+                        sort=False,
                         sort_within_batch=False,
-                        repeat=False):
+                        repeat=False, is_trainingset=True, **kwargs):
     return AllenWSDDatasetBucketIterator(dataset, max_tokens_in_batch, device="cuda",
                                          sort_key=sort_key,
                                          sort=sort,
-                                         sort_within_batch=sort_within_batch, batch_size_fn=get_batch_size,
-                                         repeat=repeat)
+                                         sort_within_batch=sort_within_batch,
+                                         batch_size_fn=get_batch_size,
+                                         repeat=repeat,
+                                         train=is_trainingset, **kwargs)
 
 
 def get_batch_size(ex, num_ex, curr_size):
@@ -29,6 +31,22 @@ def get_batch_size(ex, num_ex, curr_size):
 
 
 class AllenWSDDatasetBucketIterator(BucketIterator):
+
+
+    def create_batches(self):
+        if self.sort:
+            self.batches = batch(self.data(), self.batch_size,
+                                 self.batch_size_fn)
+        else:
+            data = sorted(self.dataset, key=self.sort_key)
+            self.batches = pool(data, self.batch_size,
+                                self.sort_key, self.batch_size_fn,
+                                random_shuffler=self.random_shuffler,
+                                shuffle=self.shuffle,
+                                sort_within_batch=self.sort_within_batch)
+
+
+
     def __len__(self):
         if not hasattr(self, "batches"):
             self.create_batches()

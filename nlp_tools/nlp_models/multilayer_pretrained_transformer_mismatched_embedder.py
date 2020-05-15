@@ -1,9 +1,10 @@
-from typing import Optional, List
+from typing import Optional, List, Callable
 
 import torch
 from allennlp.modules.token_embedders.token_embedder import TokenEmbedder
 from allennlp.nn import util
 from overrides import overrides
+from torch import Tensor
 
 from nlp_tools.nlp_models.multilayer_pretrained_transformer_embedder import MultilayerPretrainedTransformerEmbedder
 
@@ -11,12 +12,14 @@ from nlp_tools.nlp_models.multilayer_pretrained_transformer_embedder import Mult
 Most of this code is copied from allennlp library version 1.0 RC4.
 """
 
+
 class MultilayerPretrainedTransformerMismatchedEmbedder(TokenEmbedder):
 
-    def __init__(self, model_name: str, layers_to_merge: List, max_length: int = None) -> None:
+    def __init__(self, model_name: str, layers_to_merge: List, max_length: int = None,
+                 layer_merger: Callable[[List[Tensor]], Tensor] = sum) -> None:
         super().__init__()
-        # The matched version v.s. mismatched
-        self._matched_embedder = MultilayerPretrainedTransformerEmbedder(model_name, layers_to_merge, max_length)
+        self._matched_embedder = MultilayerPretrainedTransformerEmbedder(model_name, layers_to_merge, max_length,
+                                                                         layer_merger)
 
     @overrides
     def get_output_dim(self):
