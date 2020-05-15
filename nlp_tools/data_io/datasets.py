@@ -107,7 +107,8 @@ class WSDDataset(AllennlpDataset):
 
     def load_xml(self, tokid2gold, file_path, lang):
         examples = list()
-        for _, sentence in tqdm(etree.iterparse(file_path, tag="sentence"), desc="reading {}".format(file_path.split("/")[-1])):
+        for _, sentence in tqdm(etree.iterparse(file_path, tag="sentence"),
+                                desc="reading {}".format(file_path.split("/")[-1])):
             words = list()
             lemmaposs = list()
             ids = list()
@@ -192,3 +193,20 @@ class WSDDataset(AllennlpDataset):
         fields["lang"] = MetadataField(lang)
 
         return Instance(fields)
+
+
+class TokenizedSentencesDataset(AllennlpDataset):
+    def __init__(self, sentences: List[List[str]], indexer: TokenIndexer):
+        self.indexers = {"tokens": indexer}
+        instances = self.__process_sentences(sentences)
+        super().__init__(instances)
+
+    def __process_sentences(self, sentences: List[List[str]]):
+        examples = list()
+        for sentence in sentences:
+            input_words_field = TextField([Token(x) for x in sentence], self.indexers)
+            fields = {"tokens": input_words_field}
+            fields["sentence"] = MetadataField(sentence)
+            examples.append(Instance(fields))
+        return examples
+
