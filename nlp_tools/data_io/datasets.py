@@ -69,7 +69,7 @@ class LabelVocabulary(Vocab):
 class WSDDataset(AllennlpDataset):
     def __init__(self, lang2paths: Dict[str, List[str]], lemma2synsets: MultilingualLemma2Synsets,
                  label_mapper: Union[Dict[str, str], None], indexer: TokenIndexer,
-                 label_vocab: Vocab,
+                 label_vocab: Union[Vocab, None],
                  **kwargs):
         self.key2goldid = label_mapper
         self.lemma2synsets = lemma2synsets
@@ -153,19 +153,21 @@ class WSDDataset(AllennlpDataset):
             labels = np.zeros(len(input_words))
 
         label_ids = []
-        for labels_for_instance in labels:
-            if len(labels_for_instance) < 1:
-                label_ids.append(self.label_vocab.get_idx("<pad>"))
-            else:
-                l = labels_for_instance[0]
-                label_ids.append(
-                    self.label_vocab.get_idx(l) if l in self.label_vocab.stoi
-                    else self.label_vocab.get_idx(
-                        "<unk>"))
+        if self.label_vocab is not None:
+            for labels_for_instance in labels:
+                if len(labels_for_instance) < 1:
+                    label_ids.append(self.label_vocab.get_idx("<pad>"))
+                else:
+                    l = labels_for_instance[0]
+                    label_ids.append(
+                        self.label_vocab.get_idx(l) if l in self.label_vocab.stoi
+                        else self.label_vocab.get_idx(
+                            "<unk>"))
+                    assert np.sum(np.array(label_ids) != 0) == len(cache_instance_id.metadata)
+
         label_field = ArrayField(
             array=np.array(label_ids).astype(np.int32),
             dtype=np.long)
-        assert np.sum(np.array(label_ids) != 0) == len(cache_instance_id.metadata)
         fields["label_ids"] = label_field
         fields["labels"] = MetadataField([ls for ls in labels if ls is not None])
 
@@ -175,15 +177,16 @@ class WSDDataset(AllennlpDataset):
         labeled_lemmapos = MetadataField(np.array(input_lemmapos)[labeled_token_indices])
         fields["labeled_lemmapos"] = labeled_lemmapos
         possible_labels = list()
-        for i in range(len(input_lemmapos)):
-            if input_ids[i] is None:
-                continue
-            classes = self.lemma2synsets.get(input_lemmapos[i], lang, [self.label_vocab.unk_index])
-            classes = np.array(classes)
+        if self.label_vocab is not None:
+            for i in range(len(input_lemmapos)):
+                if input_ids[i] is None:
+                    continue
+                classes = self.lemma2synsets.get(input_lemmapos[i], lang, [self.label_vocab.unk_index])
+                classes = np.array(classes)
 
-            possible_labels.append(classes)
+                possible_labels.append(classes)
 
-        assert len(labeled_lemmapos) == len(labeled_token_indices) == len(possible_labels)
+            assert len(labeled_lemmapos) == len(labeled_token_indices) == len(possible_labels)
         possible_labels_field = MetadataField(possible_labels)
         fields["possible_labels"] = possible_labels_field
         fields["lang"] = MetadataField(lang)
