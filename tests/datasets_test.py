@@ -3,6 +3,8 @@ from allennlp.data.token_indexers import PretrainedTransformerMismatchedIndexer
 
 from nlp_tools.allen_data.iterators import get_bucket_iterator
 from nlp_tools.data_io.datasets import TokenizedSentencesDataset
+from nlp_tools.nlp_models.multilayer_pretrained_transformer_mismatched_embedder import \
+    MultilayerPretrainedTransformerMismatchedEmbedder
 
 
 def test_possible_labels(languages, paths):
@@ -19,10 +21,14 @@ def test_tokenized_sentences_dataset():
     indexer = PretrainedTransformerMismatchedIndexer("bert-large-cased")
     dataset = TokenizedSentencesDataset(sentences, indexer)
     dataset.index_with(Vocabulary())
-    iterator = get_bucket_iterator(dataset, 20, is_trainingset=False)
+    iterator = get_bucket_iterator(dataset, 1000, is_trainingset=False)
 
     for elem in iterator:
         print(elem)
+    model = MultilayerPretrainedTransformerMismatchedEmbedder("bert-large-cased", [-1])
+    iterator = get_bucket_iterator(dataset, 1000, is_trainingset=False)
+    for batch in iterator:
+        print(model(**batch["tokens"]["tokens"]))
 
 if __name__ == "__main__":
     # lemma2synsets, mfs_dictionary, label_vocab = get_data(sense_inventory, langs, mfs_file)
