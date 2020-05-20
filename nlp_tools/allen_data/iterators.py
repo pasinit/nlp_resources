@@ -1,6 +1,7 @@
 from allennlp.data import Batch
+from allennlp.nn.util import move_to_device
 from torchtext.data import BucketIterator, batch, pool
-
+import torch
 
 def sorting_key(x):
     return len(x.fields["tokens"]._indexed_tokens["tokens"]["token_ids"])
@@ -10,8 +11,10 @@ def get_bucket_iterator(dataset, max_tokens_in_batch,
                         sort_key=sorting_key,
                         sort=False,
                         sort_within_batch=False,
-                        repeat=False, is_trainingset=True, **kwargs):
-    return AllenWSDDatasetBucketIterator(dataset, max_tokens_in_batch, device="cuda",
+                        repeat=False, is_trainingset=True,
+                        device:torch.device = torch.device("cuda", 0),
+                        **kwargs):
+    return AllenWSDDatasetBucketIterator(dataset, max_tokens_in_batch, device=device,
                                          sort_key=sort_key,
                                          sort=sort,
                                          sort_within_batch=sort_within_batch,
@@ -71,6 +74,8 @@ class AllenWSDDatasetBucketIterator(BucketIterator):
                     else:
                         minibatch.sort(key=self.sort_key, reverse=True)
                 batch = Batch(minibatch)
+                if self.device == 'cuda' or self.device.type == "cuda":
+                    batch = move_to_device(batch, self.device.index if self.device.index is not None else 0)
                 yield batch.as_tensor_dict(batch.get_padding_lengths())
             if not self.repeat:
                 return

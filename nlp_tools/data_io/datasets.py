@@ -1,6 +1,6 @@
 import logging
 import re
-from collections import OrderedDict, Counter
+from collections import OrderedDict, Counter, namedtuple
 from typing import List, Dict, Union
 
 import numpy as np
@@ -164,7 +164,7 @@ class WSDDataset(AllennlpDataset):
                         self.label_vocab.get_idx(l) if l in self.label_vocab.stoi
                         else self.label_vocab.get_idx(
                             "<unk>"))
-                    assert np.sum(np.array(label_ids) != 0) == len(cache_instance_id.metadata)
+            assert np.sum(np.array(label_ids) != 0) == len(cache_instance_id.metadata)
 
         label_field = ArrayField(
             array=np.array(label_ids).astype(np.int32),
@@ -193,6 +193,38 @@ class WSDDataset(AllennlpDataset):
         fields["lang"] = MetadataField(lang)
 
         return Instance(fields)
+
+ParsedToken = namedtuple('ParsedToken', ["word", "lemma", "pos"])
+
+class ParsedSentencesDataset(AllennlpDataset):
+
+    def __init__(self, sentences: List[List[ParsedToken]], indexer: TokenIndexer,
+                 label_vocab:LabelVocabulary=None,
+                 inventory:Dict[str,List]=None):
+        self.indexers = {"tokens": indexer}
+        self.inventory = inventory
+        self.label_vocab = label_vocab
+        instances = self.__process_sentences(sentences)
+        super().__init__(instances)
+
+    def __process_sentences(self, sentences: List[List[ParsedToken]]):
+        examples = list()
+        for sentence in sentences:
+            input_words_field = TextField([Token(x.word) for x in sentence], self.indexers)
+            lemmas = [x.lemma for x in sentence]
+            pos = [x.pos for x in sentence]
+            lexemes = [(l.lower() + "#" + p.lower()) if l is not None else '' for l, p in zip(lemmas, pos)]
+
+            fields = {"tokens": input_words_field}
+            fields["sentence"] = MetadataField(sentence)
+            fields["lexemes"] = MetadataField(lexemes)
+            if self.inventory and self.label_vocab:
+                possible_labels = [[self.label_vocab[x] for x in self.inventory.get(l, self.inventory.keys())] for
+                                   l in lexemes if l != '']
+                fields["possible_labels"] = MetadataField(possible_labels)
+
+            examples.append(Instance(fields))
+        return examples
 
 
 class TokenizedSentencesDataset(AllennlpDataset):
