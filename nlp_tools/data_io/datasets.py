@@ -218,8 +218,8 @@ class ParsedSentencesDataset(AllennlpDataset):
             fields = {"tokens": input_words_field}
             fields["sentence"] = MetadataField(sentence)
             fields["lexemes"] = MetadataField(lexemes)
-            if self.inventory and self.label_vocab:
-                possible_labels = [[self.label_vocab[x] for x in self.inventory.get(l, self.inventory.keys())] for
+            if self.inventory:
+                possible_labels = [[x for x in self.inventory.get(l, self.inventory.keys())] for
                                    l in lexemes if l != '']
                 fields["possible_labels"] = MetadataField(possible_labels)
 
