@@ -4,7 +4,7 @@ from lxml import etree
 
 from nlp_tools.nlp_utils.utils import get_pos_from_key, get_simplified_pos
 
-WORDNET_DICT_PATH = "/opt/WordNet-3.0/dict/index.sense"
+# WORDNET_DICT_PATH = "/opt/WordNet-3.0/dict/index.sense"
 
 def load_bn_offset2bnid_map(path):
     offset2bnid = dict()
@@ -110,14 +110,27 @@ class Lemma2Synsets(dict):
 
     @staticmethod
     def sensekeys_from_wordnet_dict():
+        from nltk.corpus import wordnet as wn
         lemmapos2gold = dict()
-        with open(WORDNET_DICT_PATH) as lines:
-            for line in lines:
-                fields = line.strip().split(" ")
-                key = fields[0]
-                pos = get_pos_from_key(key)
-                lexeme = key.split("%")[0] + "#" + pos
+
+        for synset in wn.all_synsets():
+            pos = synset.pos()
+            for sense in synset.lemmas():
+                sensekey = sense.key()
+                lemma = sense.name()
+                lexeme = lemma + "#" + pos
                 golds = lemmapos2gold.get(lexeme, set())
-                golds.add(key)
+                golds.add(sensekey)
                 lemmapos2gold[lexeme] = golds
         return Lemma2Synsets(data=lemmapos2gold)
+
+        # with open(WORDNET_DICT_PATH) as lines:
+        #     for line in lines:
+        #         fields = line.strip().split(" ")
+        #         key = fields[0]
+        #         pos = get_pos_from_key(key)
+        #         lexeme = key.split("%")[0] + "#" + pos
+        #         golds = lemmapos2gold.get(lexeme, set())
+        #         golds.add(key)
+        #         lemmapos2gold[lexeme] = golds
+        # return Lemma2Synsets(data=lemmapos2gold)

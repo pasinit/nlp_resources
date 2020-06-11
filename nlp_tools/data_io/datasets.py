@@ -20,35 +20,43 @@ logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
 
 def wnoffset_vocabulary():
     offsets = list()
-    with open(WORDNET_DICT_PATH) as lines:
-        for line in lines:
-            fields = line.strip().split(" ")
-            key = fields[0]
-            pos = get_pos_from_key(key)
-            offset = "wn:" + fields[1] + pos
-            offsets.append(offset)
+    from nltk.corpus import wordnet as wn
+    for synset in wn.all_synsets():
+        offset = str(synset.offset())
+        offset = "wn:" + "0"*(8 - len(offset)) + offset + synset.pos()
+        offsets.append(offset)
+    # with open(WORDNET_DICT_PATH) as lines:
+    #     for line in lines:
+    #         fields = line.strip().split(" ")
+    #         key = fields[0]
+    #         pos = get_pos_from_key(key)
+    #         offset = "wn:" + fields[1] + pos
+    #         offsets.append(offset)
     return LabelVocabulary(Counter(sorted(offsets)), specials=["<pad>", "<unk>"])
 
 
 def bnoffset_vocabulary():
     # with open("resources/vocabularies/bn_vocabulary.txt") as lines:
     #     bnoffsets = [line.strip() for line in lines]
+    from nltk.corpus import wordnet as wn
     wn2bn = get_wnoffset2bnoffset()
     offsets = set()
-    with open(WORDNET_DICT_PATH) as lines:
-        for line in lines:
-            fields = line.strip().split(" ")
-            key = fields[0]
-            pos = get_pos_from_key(key)
-            offset = "wn:" + fields[1] + pos
-            bnoffset = wn2bn[offset]
-            offsets.update(bnoffset)
+    # with open(WORDNET_DICT_PATH) as lines:
+    #     for line in lines:
+    for synset in wn.all_synsets():
+        offset = str(synset.offset())
+        offset = "wn:" + "0"*(8 - len(offset)) + offset + synset.pos()
+        bnoffset = wn2bn[offset]
+        offsets.update(bnoffset)
     return LabelVocabulary(Counter(sorted(offsets)), specials=["<pad>", "<unk>"])
 
 
 def wn_sensekey_vocabulary():
-    with open(WORDNET_DICT_PATH) as lines:
-        keys = [line.strip().split(" ")[0].replace("%5", "%3") for line in lines]
+    # with open(WORDNET_DICT_PATH) as lines:
+    #     keys = [line.strip().split(" ")[0].replace("%5", "%3") for line in lines]
+    from nltk.corpus import wordnet as wn
+    for synset in wn.all_synsets():
+        synset.
     return LabelVocabulary(Counter(sorted(keys)), specials=["<pad>", "<unk>"])
 
 
