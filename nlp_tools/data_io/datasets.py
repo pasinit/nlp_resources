@@ -11,7 +11,7 @@ from lxml import etree
 from torchtext.vocab import Vocab
 from tqdm import tqdm
 
-from nlp_tools.data_io.data_utils import MultilingualLemma2Synsets, WORDNET_DICT_PATH
+from nlp_tools.data_io.data_utils import MultilingualLemma2Synsets
 from nlp_tools.data_io.mapping_utils import get_wnoffset2bnoffset
 from nlp_tools.nlp_utils.utils import get_pos_from_key, get_simplified_pos
 
@@ -23,7 +23,7 @@ def wnoffset_vocabulary():
     from nltk.corpus import wordnet as wn
     for synset in wn.all_synsets():
         offset = str(synset.offset())
-        offset = "wn:" + "0"*(8 - len(offset)) + offset + synset.pos()
+        offset = "wn:" + "0" * (8 - len(offset)) + offset + synset.pos()
         offsets.append(offset)
     # with open(WORDNET_DICT_PATH) as lines:
     #     for line in lines:
@@ -45,7 +45,7 @@ def bnoffset_vocabulary():
     #     for line in lines:
     for synset in wn.all_synsets():
         offset = str(synset.offset())
-        offset = "wn:" + "0"*(8 - len(offset)) + offset + synset.pos()
+        offset = "wn:" + "0" * (8 - len(offset)) + offset + synset.pos()
         bnoffset = wn2bn[offset]
         offsets.update(bnoffset)
     return LabelVocabulary(Counter(sorted(offsets)), specials=["<pad>", "<unk>"])
@@ -54,9 +54,11 @@ def bnoffset_vocabulary():
 def wn_sensekey_vocabulary():
     # with open(WORDNET_DICT_PATH) as lines:
     #     keys = [line.strip().split(" ")[0].replace("%5", "%3") for line in lines]
+    keys = list()
     from nltk.corpus import wordnet as wn
     for synset in wn.all_synsets():
-        synset.
+        for sense in synset.lemmas():
+            keys.append(sense.key())
     return LabelVocabulary(Counter(sorted(keys)), specials=["<pad>", "<unk>"])
 
 
@@ -202,13 +204,15 @@ class WSDDataset(AllennlpDataset):
 
         return Instance(fields)
 
+
 ParsedToken = namedtuple('ParsedToken', ["word", "lemma", "pos"])
+
 
 class ParsedSentencesDataset(AllennlpDataset):
 
     def __init__(self, sentences: List[List[ParsedToken]], indexer: TokenIndexer,
-                 label_vocab:LabelVocabulary=None,
-                 inventory:Dict[str,List]=None):
+                 label_vocab: LabelVocabulary = None,
+                 inventory: Dict[str, List] = None):
         self.indexers = {"tokens": indexer}
         self.inventory = inventory
         self.label_vocab = label_vocab
@@ -249,4 +253,3 @@ class TokenizedSentencesDataset(AllennlpDataset):
             fields["sentence"] = MetadataField(sentence)
             examples.append(Instance(fields))
         return examples
-
