@@ -73,7 +73,7 @@ class OutputWriterCallback(EpochCallback):
     def __init__(self, owriter: OutputWriter):
         self.owriter = owriter
 
-    def __call__(self, trainer: GradientDescentTrainer, metrics: Dict[str, Any], epoch: int):
+    def __call__(self, trainer: GradientDescentTrainer, metrics: Dict[str, Any], epoch: int, **kwargs):
         self.owriter.set_epoch(epoch + 1)
         self.owriter.reset()
 
@@ -83,7 +83,7 @@ class WanDBLogger():
         self.metrics_to_report = metrics_to_report
         self.soft_match = soft_match
 
-    def __call__(self, metrics: Dict[str, Any], epoch:int, prefix:str = None):
+    def __call__(self, metrics: Dict[str, Any], epoch:int, prefix:str = None, **kwargs):
         metrics_keys = set()
         if self.soft_match:
             for k in self.metrics_to_report:
@@ -120,7 +120,7 @@ class TestAndWrite(EpochCallback):
         self.wandb_logger = wandb_logger
         self.is_dev = is_dev
 
-    def __call__(self, trainer: GradientDescentTrainer, metrics: Dict[str, Any], epoch: int):
+    def __call__(self, trainer: GradientDescentTrainer, metrics: Dict[str, Any], epoch: int, **kwargs):
 
         trainer.model.get_metrics(True)
         if epoch < 0:
