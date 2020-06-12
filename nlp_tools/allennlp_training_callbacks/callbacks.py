@@ -102,7 +102,7 @@ class WanDBTrainingCallback(EpochCallback):
     def __init__(self, wandb_logger: WanDBLogger):
         self.wandb_logger = wandb_logger
 
-    def __call__(self, trainer: GradientDescentTrainer, metrics: Dict[str, Any], epoch: int):
+    def __call__(self, trainer: GradientDescentTrainer, metrics: Dict[str, Any], epoch: int, **kwargs):
         metrics["step"] = epoch
         self.wandb_logger(metrics, epoch)
 
