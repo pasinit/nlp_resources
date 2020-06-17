@@ -94,7 +94,7 @@ class WanDBLogger():
             metrics_keys = self.metrics_to_report
         report = {(prefix + "_" if prefix is not None else "") + k: metrics[k] for k in metrics_keys if k in metrics}
         report["step"] = epoch
-        wdb.log(report, step=epoch)
+        wdb.log(report, step=epoch+1)
 
 
 @EpochCallback.register("wandbn_training")
