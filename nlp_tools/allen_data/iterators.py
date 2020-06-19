@@ -1,4 +1,5 @@
-from allennlp.data import Batch
+from allennlp.data import Batch, DataLoader
+from allennlp.data.samplers import BucketBatchSampler, MaxTokensBatchSampler
 from allennlp.nn.util import move_to_device
 from torchtext.data import BucketIterator, batch, pool
 import torch
@@ -8,19 +9,21 @@ def sorting_key(x):
 
 
 def get_bucket_iterator(dataset, max_tokens_in_batch,
-                        sort_key=sorting_key,
+                        sort_key=("tokens",),
                         sort=False,
                         sort_within_batch=False,
                         repeat=False, is_trainingset=True,
                         device:torch.device = torch.device("cuda", 0),
                         **kwargs):
-    return AllenWSDDatasetBucketIterator(dataset, max_tokens_in_batch, device=device,
-                                         sort_key=sort_key,
-                                         sort=sort,
-                                         sort_within_batch=sort_within_batch,
-                                         batch_size_fn=get_batch_size,
-                                         repeat=repeat,
-                                         train=is_trainingset, **kwargs)
+    batch_sampler = MaxTokensBatchSampler(dataset, 1000, sort_key)
+    return DataLoader(dataset, batch_sampler=batch_sampler)
+    # return AllenWSDDatasetBucketIterator(dataset, max_tokens_in_batch, device=device,
+    #                                      sort_key=sort_key,
+    #                                      sort=sort,
+    #                                      sort_within_batch=sort_within_batch,
+    #                                      batch_size_fn=get_batch_size,
+    #                                      repeat=repeat,
+    #                                      train=is_trainingset, **kwargs)
 
 
 def get_batch_size(ex, num_ex, curr_size):
@@ -34,7 +37,6 @@ def get_batch_size(ex, num_ex, curr_size):
 
 
 class AllenWSDDatasetBucketIterator(BucketIterator):
-
 
     def create_batches(self):
         if self.sort:

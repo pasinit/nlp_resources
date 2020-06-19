@@ -1,5 +1,7 @@
-from allennlp.data import Vocabulary
+from allennlp.data import Vocabulary, AllennlpDataset, DataLoader
+from allennlp.data.samplers import BasicBatchSampler, BucketBatchSampler, MaxTokensBatchSampler
 from allennlp.data.token_indexers import PretrainedTransformerMismatchedIndexer
+from torch.utils.data.sampler import SequentialSampler
 
 from nlp_tools.allen_data.iterators import get_bucket_iterator
 from nlp_tools.data_io.data_utils import MultilingualLemma2Synsets
@@ -59,18 +61,23 @@ if __name__ == "__main__":
                indexer=indexer, label_vocab=None)
     dataset.index_with(Vocabulary())
     print("batching...")
-    iterator = get_bucket_iterator(dataset, 1000, is_trainingset=False)
-    for batch in iterator:
-        outputs = embedder(**batch["tokens"]["tokens"])
-        for i, (ids, labels) in enumerate(zip(batch["ids"], batch["labels"])):
-            vectors = outputs[i]
-            ids = [x for x in ids if x != None]
-            labels = [x for x in labels if x != ""]
-            for instance_id, instance_label, instance_vector in zip(ids, labels, vectors[:len(ids)]):
-                print(instance_id, instance_label, instance_vector.detach().cpu())
-
-        print(outputs)
-        break
+    # iterator = get_bucket_iterator(dataset, 1000, is_trainingset=False)
+    # sampler = SequentialSampler(data_source=dataset)
+    # batch_sampler = BasicBatchSampler(sampler, batch_size=2, drop_last=False)
+    batch_sampler = MaxTokensBatchSampler(dataset, 1000, ["tokens"])
+    data_loader = DataLoader(dataset, batch_sampler=batch_sampler)
+    for batch in data_loader:
+        print(batch["tokens"]["tokens"]["token_ids"].shape)
+        # outputs = embedder(**batch["tokens"]["tokens"])
+        # for i, (ids, labels) in enumerate(zip(batch["ids"], batch["labels"])):
+        #     vectors = outputs[i]
+        #     ids = [x for x in ids if x != None]
+        #     labels = [x for x in labels if x != ""]
+        #     for instance_id, instance_label, instance_vector in zip(ids, labels, vectors[:len(ids)]):
+        #         print(instance_id, instance_label, instance_vector.detach().cpu())
+        #
+        # print(outputs)
+        # break
     print("ok")
 
 
