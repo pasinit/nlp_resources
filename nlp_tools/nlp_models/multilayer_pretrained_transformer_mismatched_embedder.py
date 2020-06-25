@@ -30,7 +30,7 @@ def __word_segment_first_merger(span_embeddings: Tensor, *args) -> Tensor:
     :param args:
     :return:
     """
-    return span_embeddings[:, :, 1, :]
+    return span_embeddings[:, :, 0, :]
 
 def get_combiner(combiner:str) -> Callable[[Tensor, Any], Tensor]:
     if combiner == "mean":
