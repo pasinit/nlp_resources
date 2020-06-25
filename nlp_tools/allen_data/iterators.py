@@ -15,7 +15,8 @@ def get_bucket_iterator(dataset, max_tokens_in_batch,
                         repeat=False, is_trainingset=True,
                         device:torch.device = torch.device("cuda", 0),
                         **kwargs):
-    batch_sampler = MaxTokensBatchSampler(dataset, 1000, sort_key)
+    batch_sampler = MaxTokensBatchSampler(dataset, max_tokens_in_batch, sort_key)
+
     return DataLoader(dataset, batch_sampler=batch_sampler)
     # return AllenWSDDatasetBucketIterator(dataset, max_tokens_in_batch, device=device,
     #                                      sort_key=sort_key,

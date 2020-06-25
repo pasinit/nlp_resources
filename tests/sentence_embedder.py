@@ -2,12 +2,13 @@ from allennlp.data import Vocabulary, AllennlpDataset, DataLoader
 from allennlp.data.samplers import BasicBatchSampler, BucketBatchSampler, MaxTokensBatchSampler
 from allennlp.data.token_indexers import PretrainedTransformerMismatchedIndexer
 from torch.utils.data.sampler import SequentialSampler
+from tqdm import tqdm
 
 from nlp_tools.allen_data.iterators import get_bucket_iterator
 from nlp_tools.data_io.data_utils import MultilingualLemma2Synsets
 from nlp_tools.data_io.datasets import WSDDataset
 from nlp_tools.nlp_models.multilayer_pretrained_transformer_mismatched_embedder import \
-    MultilayerPretrainedTransformerMismatchedEmbedder
+    MultilayerPretrainedTransformerMismatchedEmbedder, __word_segment_first_merger
 from nlp_tools.nlp_utils.utils import get_simplified_pos
 
 
@@ -15,7 +16,9 @@ def inventory_from_bn_mapping(langs=("en",), **kwargs):
     lang2inventory = dict()
     for lang in langs:
         lemmapos2gold = dict()
-        with open("/home/tommaso/dev/PycharmProjects/WSDframework/resources/evaluation_framework_3.0/inventories/inventory.{}.withgold.txt".format(lang)) as lines:
+        with open(
+                "/home/tommaso/dev/PycharmProjects/WSDframework/resources/evaluation_framework_3.0/inventories/inventory.{}.withgold.txt".format(
+                        lang)) as lines:
             for line in lines:
                 fields = line.strip().lower().split("\t")
                 if len(fields) < 2:
@@ -29,6 +32,7 @@ def inventory_from_bn_mapping(langs=("en",), **kwargs):
                 lemmapos2gold[lemmapos] = old_synsets
         lang2inventory[lang] = lemmapos2gold
     return MultilingualLemma2Synsets(**lang2inventory)
+
 
 def __load_reverse_multimap(path, key_transformer=lambda x: x, value_transformer=lambda x: x):
     sensekey2bnoffset = dict()
@@ -44,31 +48,37 @@ def __load_reverse_multimap(path, key_transformer=lambda x: x, value_transformer
         sensekey2bnoffset[k] = list(v)
     return sensekey2bnoffset
 
+
 if __name__ == "__main__":
     encoder_name = "xlm-roberta-large"
     print("loading indexer")
     indexer = PretrainedTransformerMismatchedIndexer(encoder_name)
     print("loading embedder")
-    embedder = MultilayerPretrainedTransformerMismatchedEmbedder(encoder_name, layers_to_merge=[-1,-2,-3,-4])
+    embedder = MultilayerPretrainedTransformerMismatchedEmbedder(encoder_name, layers_to_merge=[-1, -2, -3, -4],
+                                                                 word_segment_emb_merger=__word_segment_first_merger)
     print("loading inventory")
     inventory = inventory_from_bn_mapping(("en", "it", "es", "fr", "de"))
-    paths = {"en":["/home/tommaso/dev/PycharmProjects/WSDframework/data2/training_data/en_training_data/semcor/semcor.data.xml"]}
-                   # "/home/tommaso/dev/PycharmProjects/WSDframework/data2/training_data/en_training_data/wngt_michele/wngt_michele_examples/wngt_michele_examples.data.xml",
-                   # "/home/tommaso/dev/PycharmProjects/WSDframework/data2/training_data/en_training_data/wngt_michele/wngt_michele_glosses/wngt_michele_glosses.data.xml"]}
+    paths = {"en": [
+        "/home/tommaso/dev/PycharmProjects/WSDframework/data2/training_data/en_training_data/semcor/semcor.data.xml"]}
+    # "/home/tommaso/dev/PycharmProjects/WSDframework/data2/training_data/en_training_data/wngt_michele/wngt_michele_examples/wngt_michele_examples.data.xml",
+    # "/home/tommaso/dev/PycharmProjects/WSDframework/data2/training_data/en_training_data/wngt_michele/wngt_michele_glosses/wngt_michele_glosses.data.xml"]}
     print("loading datasets")
-    label_mapper = __load_reverse_multimap("/home/tommaso/dev/PycharmProjects/WSDframework/resources/mappings/all_bn_wn_keys.txt")
+    label_mapper = __load_reverse_multimap(
+        "/home/tommaso/dev/PycharmProjects/WSDframework/resources/mappings/all_bn_wn_keys.txt")
     dataset = WSDDataset(paths, lemma2synsets=inventory, label_mapper=label_mapper,
-               indexer=indexer, label_vocab=None)
+                         indexer=indexer, label_vocab=None)
     dataset.index_with(Vocabulary())
+    # dataset.instances = dataset.instances[:100]
     print("batching...")
-    # iterator = get_bucket_iterator(dataset, 1000, is_trainingset=False)
+    iterator = get_bucket_iterator(dataset, 1000, is_trainingset=False)
     # sampler = SequentialSampler(data_source=dataset)
     # batch_sampler = BasicBatchSampler(sampler, batch_size=2, drop_last=False)
-    batch_sampler = MaxTokensBatchSampler(dataset, 1000, ["tokens"])
-    data_loader = DataLoader(dataset, batch_sampler=batch_sampler)
-    for batch in data_loader:
-        print(batch["tokens"]["tokens"]["token_ids"].shape)
-        # outputs = embedder(**batch["tokens"]["tokens"])
+    # batch_sampler = MaxTokensBatchSampler(dataset, 1000, ["tokens"])
+
+    # data_loader = DataLoader(dataset, batch_sampler=batch_sampler)
+    for batch in iterator:
+        print(batch["tokens"]["tokens"]["token_ids"].shape[0] * batch["tokens"]["tokens"]["token_ids"].shape[1])
+        outputs = embedder(**batch["tokens"]["tokens"])
         # for i, (ids, labels) in enumerate(zip(batch["ids"], batch["labels"])):
         #     vectors = outputs[i]
         #     ids = [x for x in ids if x != None]
@@ -79,5 +89,3 @@ if __name__ == "__main__":
         # print(outputs)
         # break
     print("ok")
-
-
