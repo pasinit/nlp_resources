@@ -1,7 +1,7 @@
 import logging
 import re
 from collections import OrderedDict, Counter, namedtuple
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Set
 
 import numpy as np
 from allennlp.data import TokenIndexer, Instance, Token
@@ -79,13 +79,14 @@ class LabelVocabulary(Vocab):
 class WSDDataset(AllennlpDataset):
     def __init__(self, lang2paths: Dict[str, List[str]], lemma2synsets: MultilingualLemma2Synsets,
                  label_mapper: Union[Dict[str, str], None], indexer: TokenIndexer,
-                 label_vocab: Union[Vocab, None],
+                 label_vocab: Union[Vocab, None], pos: Union[Set, None] = None,
                  **kwargs):
         self.key2goldid = label_mapper
         self.lemma2synsets = lemma2synsets
         self.indexers = {"tokens": indexer}
         self.label_vocab = label_vocab
         self.pad_token_id = indexer._tokenizer.pad_token_id
+        self.pos_filter = pos
         examples = self.load_examples(lang2paths)
 
         super().__init__(examples, **kwargs)
@@ -133,9 +134,13 @@ class WSDDataset(AllennlpDataset):
                     labels.append("")
                     lemmaposs.append("")
                 else:
+                    pos = get_simplified_pos(elem.attrib["pos"])
+                    if self.pos_filter is not None:
+                        if pos not in self.pos_filter:
+                            continue
                     ids.append(elem.attrib["id"])
                     labels.append(tokid2gold[elem.attrib["id"]])
-                    lemmaposs.append(elem.attrib["lemma"].lower() + "#" + get_simplified_pos(elem.attrib["pos"]))
+                    lemmaposs.append(elem.attrib["lemma"].lower() + "#" + pos)
 
             if any(x is not None for x in ids):
                 unique_token_ids = list(range(self.start, self.start + len([x for x in ids if x is not None])))
