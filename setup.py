@@ -11,5 +11,5 @@ setup(
     author='tommaso',
     author_email='p.tommaso@gmail.com',
     description='',
-    install_requires=["transformers==2.11", "deprecated", "allennlp==1.0.0", "torchtext", "torch==1.5"],
+    install_requires=["transformers==2.11", "deprecated", "allennlp==1.0.0", "torchtext", "torch==1.5.0"],
 )
