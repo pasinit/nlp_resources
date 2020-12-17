@@ -164,7 +164,7 @@ class TestAndWrite(EpochCallback):
         # If the trainer has a moving average, restore
         # for moving_average in self.moving_averages:
         #     moving_average.restore()
-
-        self.writer.set_epoch(epoch + 1)
-        self.writer.reset()
+        if self.writer is not None:
+            self.writer.set_epoch(epoch + 1)
+            self.writer.reset()
         trainer.model.get_metrics(True)
